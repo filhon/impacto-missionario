@@ -36,7 +36,7 @@ export function CounterScreen({ tipo }: CounterScreenProps) {
 
   async function handleIncrement(n: number) {
     if (!team?.id) {
-      toast.error("Erro ao salvar — equipa não encontrada");
+      toast.error("Erro ao salvar — equipe não encontrada");
       return;
     }
 

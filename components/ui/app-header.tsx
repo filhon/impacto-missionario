@@ -4,6 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useSession } from "@/lib/context/session";
 import { countPending } from "@/lib/dexie/repos";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function AppHeader() {
   const { event, team } = useSession();
@@ -40,6 +41,7 @@ export function AppHeader() {
             {total}
           </Badge>
         )}
+        <ThemeToggle />
       </div>
     </header>
   );

@@ -21,7 +21,6 @@ import {
   Copy,
   MapPin,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -42,6 +41,25 @@ const ICONS: Record<ActivityType, React.ElementType> = {
   conversao: Heart,
   medico: Stethoscope,
   radio: Radio,
+};
+
+type ActivityRow = {
+  id: string;
+  activity_type: string;
+  count: number;
+  occurred_at: string;
+  lat: number | null;
+  lng: number | null;
+  volunteer: { name: string | null } | null;
+};
+
+type PersonRow = {
+  id: string;
+  name: string | null;
+  consent_level: number;
+  neighborhood: string | null;
+  created_at: string | null;
+  registrant: { name: string | null } | null;
 };
 
 const CONSENT_BADGE: Record<number, string> = {
@@ -79,7 +97,7 @@ export default function EquipePage() {
         .eq("team_id", teamId)
         .order("occurred_at", { ascending: false })
         .limit(50);
-      return data ?? [];
+      return (data ?? []) as ActivityRow[];
     },
     enabled: !!teamId,
     refetchInterval: 60_000,
@@ -128,7 +146,7 @@ export default function EquipePage() {
         .eq("team_id", teamId)
         .order("created_at", { ascending: false })
         .limit(50);
-      return data ?? [];
+      return (data ?? []) as PersonRow[];
     },
     enabled: !!teamId,
     refetchInterval: 60_000,
@@ -175,6 +193,7 @@ export default function EquipePage() {
           <button
             type="button"
             onClick={handleCopyCode}
+            aria-label="Copiar código da equipe"
             className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs tracking-wider">
@@ -183,40 +202,36 @@ export default function EquipePage() {
             <Copy className="size-3" />
           </button>
         </div>
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-6">
           <div className="text-right">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Atividades
-            </p>
-            <p className="text-lg font-semibold tabular-nums">
-              {totalAtividades}
-            </p>
+            <p className="text-2xl font-bold tabular-nums">{totalAtividades}</p>
+            <p className="text-xs text-muted-foreground">atividades</p>
           </div>
           <div className="text-right">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">
-              Pessoas
-            </p>
-            <p className="text-lg font-semibold tabular-nums">{peopleCount}</p>
+            <p className="text-2xl font-bold tabular-nums">{peopleCount}</p>
+            <p className="text-xs text-muted-foreground">pessoas</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
         {entries.map(([type, config]) => {
           const Icon = ICONS[type];
           const count = totalsByType[type] ?? 0;
           return (
-            <Card key={type} size="sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-1.5 text-xs font-normal uppercase tracking-wide text-muted-foreground">
-                  <Icon className="size-3.5" style={{ color: config.color }} />
-                  {config.label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-2xl font-semibold tabular-nums">{count}</p>
-              </CardContent>
-            </Card>
+            <div
+              key={type}
+              className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-3 py-2"
+            >
+              <Icon
+                className="size-4 shrink-0"
+                style={{ color: config.color }}
+              />
+              <span className="text-sm font-bold tabular-nums">{count}</span>
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                {config.label}
+              </span>
+            </div>
           );
         })}
       </div>
@@ -259,7 +274,7 @@ export default function EquipePage() {
                   return (
                     <TableRow key={row.id}>
                       <TableCell className="whitespace-nowrap">
-                        {(row as any).volunteer?.name ?? "—"}
+                        {row.volunteer?.name ?? "—"}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         <span className="flex items-center gap-1.5">
@@ -353,7 +368,7 @@ export default function EquipePage() {
                       </span>
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      {(row as any).registrant?.name ?? "—"}
+                      {row.registrant?.name ?? "—"}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
                       {row.neighborhood ?? "—"}

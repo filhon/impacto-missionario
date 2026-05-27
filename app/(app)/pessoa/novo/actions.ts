@@ -4,6 +4,62 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { uuidv7 } from "@/lib/uuid/v7";
 
+export async function checkDuplicatePerson(name: string, phone?: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { duplicate: false };
+
+  const { data: userData } = await supabase
+    .from("users")
+    .select("event_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!userData) return { duplicate: false };
+
+  const nameNorm = name.trim().toLowerCase();
+  const phoneDigits = phone?.replace(/\D/g, "") ?? "";
+
+  // Check by phone (exact match)
+  if (phoneDigits.length >= 10) {
+    const { data: byPhone } = await supabase
+      .from("people_reached")
+      .select("id, name, phone")
+      .eq("event_id", userData.event_id)
+      .eq("phone", phoneDigits)
+      .limit(1);
+
+    if (byPhone && byPhone.length > 0) {
+      return {
+        duplicate: true,
+        existingName:
+          (byPhone[0] as { name?: string | null }).name ??
+          "Pessoa já registrada",
+      };
+    }
+  }
+
+  // Check by name (case-insensitive, same event)
+  const { data: byName } = await supabase
+    .from("people_reached")
+    .select("id, name")
+    .eq("event_id", userData.event_id)
+    .gte("consent_level", 2)
+    .ilike("name", nameNorm)
+    .limit(1);
+
+  if (byName && byName.length > 0) {
+    return {
+      duplicate: true,
+      existingName: (byName[0] as { name?: string | null }).name ?? name,
+    };
+  }
+
+  return { duplicate: false };
+}
+
 export interface RegisterPersonInput {
   consentLevel: number;
   activityHint?: string;

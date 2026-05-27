@@ -232,7 +232,7 @@ export default function CoordEquipesPage() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Equipes</h1>
+        <h1 className="text-xl font-bold">Equipes</h1>
         <Dialog open={newTeamOpen} onOpenChange={setNewTeamOpen}>
           <DialogTrigger render={<Button size="sm" />}>
             <Plus className="size-4" />
@@ -299,7 +299,7 @@ export default function CoordEquipesPage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {teams?.map((team) => {
           const members = teamUsers(team.id);
           const isExpanded = expandedTeam === team.id;
@@ -320,6 +320,7 @@ export default function CoordEquipesPage() {
                     <Button
                       variant="ghost"
                       size="icon-xs"
+                      aria-label="Editar nome da equipe"
                       onClick={() => {
                         setEditNameOpen(team.id);
                         setEditNameValue(team.name);
@@ -377,7 +378,7 @@ export default function CoordEquipesPage() {
                       onClick={() => {
                         if (
                           window.confirm(
-                            `Tem certeza? O código "${team.code_4dig}" não funcionará mais no login.`,
+                            `O código "${team.code_4dig}" vai parar de funcionar. Gerar um novo?`,
                           )
                         ) {
                           handleResetCode(team.id);
@@ -517,6 +518,7 @@ export default function CoordEquipesPage() {
                             <Button
                               variant="ghost"
                               size="xs"
+                              aria-label="Remover membro"
                               onClick={() => handleRemoveMember(member.id)}
                             >
                               <Trash2 className="size-3 text-destructive" />

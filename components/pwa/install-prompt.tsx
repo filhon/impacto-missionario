@@ -60,9 +60,10 @@ export function InstallPrompt() {
         <button
           type="button"
           onClick={hide}
+          aria-label="Fechar"
           className="text-muted-foreground hover:text-foreground"
         >
-          <X size={16} />
+          <X size={16} aria-hidden="true" />
         </button>
       </div>
     </div>

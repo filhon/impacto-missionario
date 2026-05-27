@@ -39,18 +39,18 @@ export function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center bg-background p-6">
       <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <CardTitle className="text-3xl font-bold tracking-tight">
+        <CardHeader className="pb-6 pt-8 text-center">
+          <CardTitle className="text-3xl font-bold">
             Impacto Missionário
           </CardTitle>
-          <p className="text-muted-foreground mt-2 text-sm">
-            Entre com o código da sua equipe
+          <p className="mt-3 text-sm text-muted-foreground">
+            Código da equipe + seu nome para entrar
           </p>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-5">
+        <CardContent className="pb-8">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="code">Código da equipe</Label>
               <Input

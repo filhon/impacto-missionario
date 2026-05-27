@@ -8,15 +8,31 @@ export default function ConfirmacaoPage() {
   const router = useRouter();
 
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 p-4 text-center">
-      <CircleCheck className="size-16 text-primary" />
-      <h1 className="text-3xl font-bold">Registrado!</h1>
-      <div className="flex gap-3">
-        <Button onClick={() => router.push("/pessoa/novo")}>
+    <div className="flex min-h-[70vh] flex-col items-center justify-center gap-8 p-6 text-center">
+      <div className="flex flex-col items-center gap-4">
+        <CircleCheck className="size-20 text-primary" />
+        <div className="flex flex-col gap-2">
+          <h1 className="text-4xl font-bold">Registrado!</h1>
+          <p className="text-sm text-muted-foreground">
+            Dados salvos localmente e enviados quando houver conexão.
+          </p>
+        </div>
+      </div>
+      <div className="flex w-full max-w-xs flex-col gap-3">
+        <Button
+          size="lg"
+          className="w-full"
+          onClick={() => router.push("/pessoa/novo")}
+        >
           Registrar outra pessoa
         </Button>
-        <Button variant="outline" onClick={() => router.push("/")}>
-          Voltar pra home
+        <Button
+          size="lg"
+          variant="outline"
+          className="w-full"
+          onClick={() => router.push("/")}
+        >
+          Voltar ao início
         </Button>
       </div>
     </div>

@@ -77,6 +77,7 @@ export default function CoordDashboard() {
   const [endDate, setEndDate] = useState("");
   const [teamFilter, setTeamFilter] = useState(ALL_VALUE);
   const [typeFilter, setTypeFilter] = useState(ALL_VALUE);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const { data: eventInfo } = useQuery({
     queryKey: ["coord", event?.id, "event-info"],
@@ -390,111 +391,149 @@ export default function CoordDashboard() {
         <h1 className="text-lg font-semibold">Dashboard</h1>
       </div>
 
-      <div className="sticky top-12 z-40 -mx-4 flex flex-wrap items-center gap-2 bg-background px-4 py-2 shadow-sm">
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-muted-foreground">
-            De
-          </label>
-          <input
-            type="date"
-            value={effectiveStartDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-medium text-muted-foreground">
-            Até
-          </label>
-          <input
-            type="date"
-            value={effectiveEndDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
-          />
-        </div>
-        <Select value={teamFilter} onValueChange={(v) => v && setTeamFilter(v)}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>Todas as equipes</SelectItem>
-            {teams?.map((team) => (
-              <SelectItem key={team.id} value={team.id}>
-                {team.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={typeFilter} onValueChange={(v) => v && setTypeFilter(v)}>
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_VALUE}>Todos os tipos</SelectItem>
-            {(
-              Object.entries(ACTIVITY_TYPES) as [
-                ActivityType,
-                { label: string; color: string },
-              ][]
-            ).map(([type, config]) => (
-              <SelectItem key={type} value={type}>
-                {config.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="sticky top-12 z-40 -mx-4 bg-background px-4 py-2 shadow-sm">
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          aria-expanded={filtersOpen}
+          className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <svg
+            className={`size-4 transition-transform ${filtersOpen ? "rotate-180" : ""}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M3 4h18M7 8h10M11 12h2"
+            />
+          </svg>
+          Filtros
+          {(teamFilter !== ALL_VALUE || typeFilter !== ALL_VALUE) && (
+            <span className="flex size-2 rounded-full bg-primary" />
+          )}
+        </button>
+
+        {filtersOpen && (
+          <div className="mt-2 flex flex-wrap items-center gap-2 pb-1">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-muted-foreground">
+                De
+              </label>
+              <input
+                type="date"
+                value={effectiveStartDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-muted-foreground">
+                Até
+              </label>
+              <input
+                type="date"
+                value={effectiveEndDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
+              />
+            </div>
+            <Select
+              value={teamFilter}
+              onValueChange={(v) => v && setTeamFilter(v)}
+            >
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>Todas as equipes</SelectItem>
+                {teams?.map((team) => (
+                  <SelectItem key={team.id} value={team.id}>
+                    {team.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={typeFilter}
+              onValueChange={(v) => v && setTypeFilter(v)}
+            >
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>Todos os tipos</SelectItem>
+                {(
+                  Object.entries(ACTIVITY_TYPES) as [
+                    ActivityType,
+                    { label: string; color: string },
+                  ][]
+                ).map(([type, config]) => (
+                  <SelectItem key={type} value={type}>
+                    {config.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Card size="sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-xs font-normal uppercase tracking-wide text-muted-foreground">
+            <CardTitle className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
               <Activity className="size-3.5" />
-              Total de Atividades
+              Atividades
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">
+            <p className="text-2xl font-bold tabular-nums">
               {kpis.totalActivities}
             </p>
           </CardContent>
         </Card>
         <Card size="sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-xs font-normal uppercase tracking-wide text-muted-foreground">
+            <CardTitle className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
               <Users className="size-3.5" />
-              Pessoas Alcançadas
+              Pessoas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">
+            <p className="text-2xl font-bold tabular-nums">
               {kpis.totalPeople}
             </p>
           </CardContent>
         </Card>
-        <Card size="sm">
+        <Card
+          size="sm"
+          className="border-primary/20 bg-primary/5 col-span-2 md:col-span-1"
+        >
           <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-xs font-normal uppercase tracking-wide text-muted-foreground">
+            <CardTitle className="flex items-center gap-1.5 text-xs font-semibold text-primary">
               <Heart className="size-3.5" />
               Conversões
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">
+            <p className="text-3xl font-bold tabular-nums text-primary">
               {kpis.totalConversions}
             </p>
           </CardContent>
         </Card>
         <Card size="sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-xs font-normal uppercase tracking-wide text-muted-foreground">
+            <CardTitle className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
               <MapPin className="size-3.5" />
-              Bairros Alcançados
+              Bairros
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-semibold tabular-nums">
+            <p className="text-2xl font-bold tabular-nums">
               {kpis.uniqueNeighborhoods}
             </p>
           </CardContent>
@@ -505,7 +544,7 @@ export default function CoordDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">
-              Total por Equipe
+              Total por equipe
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -532,7 +571,7 @@ export default function CoordDashboard() {
                   <Tooltip />
                   <Bar
                     dataKey="total"
-                    fill="var(--color-primary, hsl(221.2 83.2% 53.3%))"
+                    fill="var(--color-primary, hsl(33 85% 34%))"
                     radius={[4, 4, 0, 0]}
                   />
                 </BarChart>
@@ -543,7 +582,7 @@ export default function CoordDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Total por Dia</CardTitle>
+            <CardTitle className="text-sm font-medium">Total por dia</CardTitle>
           </CardHeader>
           <CardContent>
             {lineChartData.length === 0 ? (
@@ -575,7 +614,7 @@ export default function CoordDashboard() {
                   <Line
                     type="monotone"
                     dataKey="total"
-                    stroke="var(--color-primary, hsl(221.2 83.2% 53.3%))"
+                    stroke="var(--color-primary, hsl(33 85% 34%))"
                     strokeWidth={2}
                     dot={{ r: 3 }}
                   />
@@ -597,9 +636,9 @@ export default function CoordDashboard() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Código</TableHead>
                 <TableHead>Líder</TableHead>
-                <TableHead>Voluntários Ativos (24h)</TableHead>
-                <TableHead>Total Registros</TableHead>
-                <TableHead>Última Atividade</TableHead>
+                <TableHead>Ativos (24h)</TableHead>
+                <TableHead>Registros</TableHead>
+                <TableHead>Última atividade</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

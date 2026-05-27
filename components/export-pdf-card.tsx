@@ -65,7 +65,7 @@ export function ExportPdfCard({
           Exportar PDF
         </CardTitle>
         <CardDescription>
-          Relatório consolidado do evento em formato PDF.
+          Relatório consolidado do evento em PDF.
         </CardDescription>
       </CardHeader>
       <CardContent>

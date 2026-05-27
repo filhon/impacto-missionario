@@ -33,45 +33,34 @@ export default function PerfilPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-4 p-4 pt-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Meu Perfil</CardTitle>
-          <CardDescription>Suas informações de cadastro</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Equipe</span>
-            {team ? (
-              <Badge
-                variant="outline"
-                className="flex items-center gap-1.5 border-none text-xs font-medium"
-                style={
-                  team.color
-                    ? {
-                        backgroundColor: team.color + "20",
-                        color: team.color,
-                      }
-                    : undefined
-                }
-              >
-                <span
-                  className="size-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: team.color ?? undefined }}
-                />
-                {team.name}
-              </Badge>
-            ) : (
-              <span className="text-sm text-muted-foreground">—</span>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+    <div className="mx-auto flex max-w-md flex-col gap-6 p-4 pt-8 pb-16">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold">Perfil</h1>
+          {team && (
+            <Badge
+              variant="outline"
+              className="mt-1 flex w-fit items-center gap-1.5 border-none text-xs font-medium"
+              style={
+                team.color
+                  ? { backgroundColor: team.color + "20", color: team.color }
+                  : undefined
+              }
+            >
+              <span
+                className="size-2 shrink-0 rounded-full"
+                style={{ backgroundColor: team.color ?? undefined }}
+              />
+              {team.name}
+            </Badge>
+          )}
+        </div>
+      </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Editar Perfil</CardTitle>
-          <CardDescription>Altere seu nome e telefone</CardDescription>
+        <CardHeader className="pb-4">
+          <CardTitle>Editar dados</CardTitle>
+          <CardDescription>Atualize nome e telefone</CardDescription>
         </CardHeader>
         <form action={handleUpdate} ref={formRef}>
           <CardContent className="space-y-4">
@@ -104,16 +93,12 @@ export default function PerfilPage() {
         </form>
       </Card>
 
-      <Card>
-        <CardFooter className="pt-4">
-          <form action={signOut} className="w-full">
-            <Button type="submit" variant="destructive" className="w-full">
-              <LogOut className="size-4" />
-              Sair
-            </Button>
-          </form>
-        </CardFooter>
-      </Card>
+      <form action={signOut}>
+        <Button type="submit" variant="destructive" className="w-full">
+          <LogOut className="size-4" />
+          Sair da conta
+        </Button>
+      </form>
     </div>
   );
 }

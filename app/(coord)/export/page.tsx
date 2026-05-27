@@ -108,7 +108,7 @@ export default function ExportPage() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("CSV exportado com sucesso!");
+      toast.success("CSV baixado");
     } catch (err) {
       toast.error("Erro ao exportar CSV");
       console.error(err);
@@ -126,18 +126,17 @@ export default function ExportPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <h1 className="text-lg font-semibold">Exportar dados</h1>
+    <div className="flex flex-col gap-6 p-4 pb-8">
+      <h1 className="text-xl font-bold">Exportar dados</h1>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Download className="size-4" />
-            Exportar CSV completo
+            Exportar CSV
           </CardTitle>
           <CardDescription>
-            Exporte todas as atividades registradas no evento em formato CSV
-            para abrir no Excel, LibreOffice ou Google Sheets.
+            Formato CSV. Abre no Excel, LibreOffice e Google Sheets.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
@@ -148,7 +147,7 @@ export default function ExportPage() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
+                className="h-10 rounded-lg border border-input bg-transparent px-3 text-sm"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -157,7 +156,7 @@ export default function ExportPage() {
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
+                className="h-10 rounded-lg border border-input bg-transparent px-3 text-sm"
               />
             </div>
           </div>
@@ -166,8 +165,8 @@ export default function ExportPage() {
             <Label>Equipes</Label>
             <p className="text-xs text-muted-foreground">
               {allTeamsSelected
-                ? "Todas as equipes selecionadas"
-                : `${selectedTeams.size} equipe(s) selecionada(s)`}
+                ? "Todas as equipes"
+                : `${selectedTeams.size} ${selectedTeams.size === 1 ? "equipe" : "equipes"}`}
             </p>
             <div className="flex flex-wrap gap-2">
               {teams?.map((team) => {
