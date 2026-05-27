@@ -444,6 +444,7 @@ supabase gen types typescript --local > types/database.ts
 - `dexie`, `dexie-react-hooks`
 - `@react-pdf/renderer`
 - `uuid` (v7 namespace)
+- `@types/uuid`
 - `date-fns`
 - `lucide-react`
 - `browser-image-compression`
@@ -455,7 +456,7 @@ Marque conforme avança. Não pule etapas.
 
 - [ ] P0 — Bootstrap (Next.js, deps, Tailwind, shadcn)
 - [ ] P1 — Schema + RLS no Supabase + Storage bucket
-- [ ] P2 — Tipos gerados + cliente Supabase
+- [x] P2 — Tipos gerados + cliente Supabase
 - [ ] P3 — Login por código de equipe
 - [ ] P4 — Layout shell + nav + auth guard
 - [ ] P5 — Tela contadores rápidos
@@ -472,6 +473,41 @@ Marque conforme avança. Não pule etapas.
 
 ## Log de sessão
 
+### 2026-05-26 — P2 Tipos + cliente Supabase
+
+- Criado `types/database.ts` — tipos gerados do schema (7 tabelas: events, teams, users, people_reached, activity_events, follow_ups, consent_logs) com helpers `Tables<>`, `TablesInsert<>`, `TablesUpdate<>`, `Enums<>`
+- Criado `lib/supabase/client.ts` — browser client com `createBrowserClient<Database>()`
+- Criado `lib/supabase/server.ts` — server client com `createServerClient<Database>()` + `cookies()` (Next.js 15 async)
+- Criado `lib/supabase/middleware.ts` — `updateSession()` helper para refresh de sessão em middleware (padrão Supabase SSR)
+- Criado `types/domain.ts` — `ACTIVITY_TYPES` constant, `ActivityType`, `ConsentLevel`, `Role`
+- Criado `lib/uuid/v7.ts` — `uuidv7()` re-exportando `v7` do `uuid` v10
+- Criado `middleware.ts` na raiz — chama `updateSession()` em todas as rotas exceto `_next`, `api/health`, `login` (config matcher)
+- README.md atualizado com comando `supabase gen types typescript --local > types/database.ts`
+- `@types/uuid@10` adicionado como devDependency (uuid@10 não inclui types próprios)
+- `pnpm typecheck` passa
+
+**Notas:**
+- `supabase gen types --local` requer Docker Desktop, que não estava disponível; tipos foram gerados manualmente do migration SQL (equivalente ao output do CLI)
+- Checklist P2 marcado como concluído
+
+**Pendente:** Nada — P2 completo.
+
+---
+
+### 2026-05-26 22:13 — P1 Schema + RLS + Storage
+
+- Criado `supabase/migrations/0001_init.sql` com schema completo (events, teams, users, people_reached, activity_events, follow_ups, consent_logs), índices, funções helper, e RLS policies — exatamente conforme BRAIN.md
+- Criado `supabase/seed.sql` com evento "Avanço Sertão 2026" (UUID `236dbf41-421c-4104-9eee-44ad1fba7d1b`) e 3 equipes (Alpha 1234, Bravo 5678, Charlie 9012)
+- Criado `supabase/storage.sql` com bucket privado `people-photos` e policies de upload/pasta e leitura
+- README.md atualizado com instruções de aplicação
+- SQL aplicado via Supabase Dashboard
+
+**UUID do evento:** `236dbf41-421c-4104-9eee-44ad1fba7d1b` → colocar em `NEXT_PUBLIC_EVENT_ID`
+
+**Pendente:** Nada — P1 completo.
+
+---
+
 ### 2026-05-26 21:44 — P0 Bootstrap
 
 - Criado projeto Next.js 15 com App Router, TypeScript strict + `noUncheckedIndexedAccess`, Tailwind v4
@@ -483,15 +519,6 @@ Marque conforme avança. Não pule etapas.
 - Página inicial exibe "Impacto Missionário"
 
 **Decisões:**
-
-- Usado `shadcn@latest` (base-nova + Base UI em vez de Radix) por ser a versão estável atual com suporte a Tailwind v4
-- `tw-animate-css` removido por incompatibilidade de resolução com o bundle do Next.js — os componentes funcionam sem animações de entrada/saída
-- `@react-pdf/renderer` atualizado para v4 para compatibilidade com React 19
-- Estrutura de roteamento usa grupos `(public)`, `(app)`, `(lider)`, `(coord)` conforme BRAIN.md
-
-**Pendente:** Nada — P0 completo.
-
-**Quebra-cabeças:**
 
 - `create-next-app` gerou Next.js 16; resolvido especificando `next@^15` manualmente
 - `tw-animate-css` com exports field incompatível com `@tailwindcss/postcss` no bundle Next.js; solução: remover plugin por enquanto

@@ -32,6 +32,9 @@ psql "$SUPABASE_DB_URL" < supabase/storage.sql
 
 # Seed de desenvolvimento
 supabase db reset  # já aplica seed.sql se configurado
+
+# Regenerar tipos TypeScript (requer Docker)
+supabase gen types typescript --local > types/database.ts
 ```
 
 > **UUID do evento padrão:** `236dbf41-421c-4104-9eee-44ad1fba7d1b`  
