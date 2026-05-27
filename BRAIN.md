@@ -38,7 +38,8 @@ Dexie.js             v4
 Supabase JS          v2
 react-pdf            v3 (geração PDF no client)
 uuid                 v10 (v7 namespace)
-date-fns             v3 (locale pt-BR)
+date-fns             v4 (locale pt-BR)
+recharts             v2
 ```
 
 Sem Capacitor. Sem Stripe. Sem Resend. Sem Upstash. Sem Framer Motion (cortado pra v2).
@@ -61,7 +62,9 @@ Sem Capacitor. Sem Stripe. Sem Resend. Sem Upstash. Sem Framer Motion (cortado p
       actions.ts          # updateProfile, signOut
   providers.tsx           # QueryClient + Toaster
   /(lider)
+    layout.tsx            # role guard (lider/coord) + SessionProvider
     /equipe
+      page.tsx            # dashboard líder (KPIs, tabelas, Tabs)
   /(coord)
     /coord
     /coord/equipes
@@ -446,6 +449,7 @@ supabase gen types typescript --local > types/database.ts
 - `date-fns`
 - `lucide-react`
 - `browser-image-compression`
+- `recharts`
 - shadcn components: `button`, `input`, `card`, `dialog`, `badge`, `table`, `tabs`, `sheet`, `sonner`, `skeleton`, `checkbox`, `textarea`, `select`, `label`
 
 ## Checklist de sessão
@@ -462,14 +466,88 @@ Marque conforme avança. Não pule etapas.
 - [x] P7 — Registro pessoa N2/N3 + consentimento
 - [x] P8 — Dexie + persistência local
 - [x] P9 — Worker de sync + retry
-- [ ] P10 — Dashboard líder
-- [ ] P11 — Dashboard coordenador
+- [x] P10 — Dashboard líder
+- [x] P11 — Dashboard coordenador
 - [ ] P12 — Export CSV
 - [ ] P13 — Export PDF
 - [ ] P14 — PWA manifest + offline shell + install prompt
 - [ ] P15 — Deploy Vercel + smoke tests + onboarding
 
 ## Log de sessão
+
+### 2026-05-27 — P11 Dashboard coordenador
+
+- **Nova dependência:** `recharts@2.15.4` (gráficos de barra e linha)
+- Criado `app/(coord)/layout.tsx` — server component que valida role `coord` (redireciona `/` se não for), busca user/team/event, fornece `SessionProvider` + `AppHeader` + `CoordBottomNav`
+- Criado `components/ui/coord-bottom-nav.tsx` — bottom nav específica do coord com links Dashboard (`/coord`) e Equipes (`/equipes`)
+- Criado `app/(coord)/actions.ts` — 7 server actions:
+  - `createTeam(formData)` — insere team com `event_id`, `name` e `code_4dig` único; trata erro `23505` (duplicate code)
+  - `generateUniqueCode()` — loop até 20 tentativas gerando `Math.floor(1000 + Math.random() * 9000)`, checa unicidade via `maybeSingle()`
+  - `updateTeamName(teamId, name)` — valida nome ≥ 2 chars, atualiza `teams.name`
+  - `setTeamLeader(teamId, leaderId)` — atualiza `teams.leader_id` + rebaixa líder anterior (`role → voluntario`) + promove novo (`role → lider`)
+  - `resetTeamCode(teamId)` — gera novo código único (mesmo loop de `generateUniqueCode`), atualiza `teams.code_4dig`
+  - `removeTeamMember(userId)` — zera `team_id` e `role` do usuário
+  - `promoteToLeader(teamId, userId)` — delegada a `setTeamLeader`
+  - Todas autenticam via `supabase.auth.getUser()` + validam role coord
+  - Todas chamam `revalidatePath("/equipes")` após sucesso
+- Criado `app/(coord)/coord/page.tsx` — client component dashboard:
+  - **4 KPIs** em grid 2×2 (md:4×1): Total de atividades (`SUM(count)`), Pessoas alcançadas (`count`), Conversões (people com `conversion_decision=true` + activities `conversao`), Bairros únicos (distinct `neighborhood` onde `consent_level >= 1`)
+  - **Gráfico de barras** (Recharts `BarChart`): eixo X = nome da equipe, eixo Y = total de `count`, ordenado decrescente
+  - **Gráfico de linha** (Recharts `LineChart`): eixo X = data (`dd/MM`), eixo Y = total, agrupado por `date_trunc('day')` via client-side `format(occurred_at, "yyyy-MM-dd")`
+  - **Tabela "Equipes"**: 6 colunas — Nome, Código (`font-mono tracking-wider`), Líder (join `users` por `leader_id`, "—" se null), Voluntários ativos (24h via `lastActivityPerUser`), Total registros, Última atividade (`formatDistanceToNow` com locale `ptBR`)
+  - **Filtros sticky** (`position: sticky top-12`): date range (inputs `type="date"` com fallback para `events.start_date/end_date`), Select equipe (base-ui `Select` com "Todas as equipes" default), Select tipo (todos `ACTIVITY_TYPES`)
+  - Queries TanStack Query com dependência de filtros nas queryKeys para re-fetch automático
+  - Bar/Line chart mostram "Nenhum dado disponível" quando array vazio
+- Criado `app/(coord)/equipes/page.tsx` — client component gestão de equipes:
+  - **Lista de cards** em grid 1×1 (md:2×1), cada card com: bolinha colorida, nome, botão editar nome (dialog com input + salvar), código grande (`text-lg font-mono tracking-widest`), contagem de membros, botão "Resetar código" (com `window.confirm`), linha do líder com "—" se null + botão "Definir líder" (dialog com `Select` de membros da equipe)
+  - **Modal "Nova equipe"** (`Dialog`): input nome + input código 4 dígitos com botão "Gerar" que chama `generateUniqueCode()` server action com loading spinner + botão "Criar equipe" (disabled enquanto criando ou vazio)
+  - **Lista expansível de membros**: toggle chevron, exibe cada membro com badge de role (`lider`/`coord` em amarelo/roxo), botão "Promover a líder" (se `voluntario`) e botão remover (ícone `Trash2` vermelho, não disponível para coord)
+  - Todas as mutações chamam `queryClient.invalidateQueries({ queryKey: ["coord", event?.id] })` após sucesso
+  - Usa TanStack Query para buscar teams, users e memberCounts
+- `pnpm typecheck` passa sem erros
+
+**Decisões:**
+
+- `CoordBottomNav` separado do `BottomNav` genérico porque coord precisa de links diferentes (Dashboard, Equipes) — route groups não compartilham layout então componente separado é mais limpo que prop-drilling
+- Filtros usam estado local `useState` em vez de search params porque são específicos da página e não precisam de URL compartilhável
+- `formatDistanceToNow` (date-fns v4) com `locale: ptBR` e `addSuffix: true` gera "há 5 minutos" / "há 2 horas" na coluna última atividade
+- Gráficos Recharts usam `ResponsiveContainer` com altura fixa 240px + fallback textual quando sem dados
+- Dialog de reset de código usa `window.confirm` nativo (simples, sem dependência extra de estado) — pode ser refinado com Dialog de confirmação customizado em versão futura
+
+**Pendente:** Nada — P11 completo.
+
+---
+
+### 2026-05-27 — P10 Dashboard líder
+
+- Modificado `lib/context/session.tsx` — adicionado `code_4dig?: string` opcional ao tipo `SessionTeam` para disponibilizar código da equipe no contexto
+- Criado `app/(lider)/layout.tsx` — server component que valida role do usuário:
+  - Busca user via `createClient()` Supabase SSR
+  - Redireciona para `/login` se não autenticado
+  - Redireciona para `/` se role não for `lider` nem `coord`
+  - Busca dados da equipe (`name`, `color`, `code_4dig`) e do evento (`name`)
+  - Renderiza `SessionProvider` + `AppHeader` + `main` + `BottomNav`
+- Criado `app/(lider)/equipe/page.tsx` — client component dashboard líder:
+  - **Header**: nome da equipe, código 4 dígitos (com botão copiar via `navigator.clipboard` + toast), total geral de atividades (soma de `count`), total de pessoas (`count` com `head: true`)
+  - **Grid 4×2 KPI cards**: 8 cards via `Card size="sm"`, um por `activity_type`, com ícone Lucide colorido, label e contagem agregada via `useMemo`
+  - **Tabs** (`@base-ui/react/tabs` com `variant="line"`): "Atividades recentes" | "Pessoas registradas"
+  - **Tab Atividades**: tabela das últimas 50 entradas com colunas Voluntário (join `users!activity_events_user_id_fkey`), Atividade (label + ícone), Qtd, Data/Hora (formatada via `date-fns` com locale pt-BR `dd/MM HH:mm`), GPS (link `maps.google.com?q=lat,lng` em nova aba se existir, senão "—")
+  - **Tab Pessoas**: tabela das últimas 50 pessoas com colunas Nome ("Anônimo" itálico se N0/N1), Consentimento (badge com estilo próprio: N0 cinza `bg-muted`, N1 azul, N2 amarelo, N3 verde), Registrado por (join `users!people_reached_registered_by_fkey`), Bairro, Data; click na linha (apenas N2+) → `router.push('/pessoa/[id]')`
+  - **TanStack Query**: 4 queries com `queryKey: ['equipe', teamId, ...]`, `staleTime: 30s` (herdado do provider), `refetchInterval: 60s` para auto-refresh
+  - **Invalidação**: listener `window.addEventListener('sync-complete', ...)` invalida todas as queries `['equipe']` após sync bem-sucedido
+- Modificado `lib/sync/worker.ts` — dispatch de `CustomEvent('sync-complete')` no `window` após `markActivitySynced`/`markPersonSynced` quando `okIds.length > 0`
+- `tsc --noEmit` passa sem erros
+
+**Decisões:**
+
+- Lider layout replica o padrão do `(app)/layout.tsx` (SessionProvider + AppHeader + BottomNav) porque route groups são independentes — não há herança de layout entre `(app)` e `(lider)`
+- Queries TanStack Query com `refetchInterval: 60s` garantem atualização automática com delay máximo aceitável; o evento `sync-complete` acelera a invalidação imediatamente após sync
+- Join de nomes usa alias do Supabase (`volunteer:users!activity_events_user_id_fkey(name)`) para evitar conflito com colunas da tabela principal e manter o resultado legível
+- Badges de consent_level usam classes Tailwind diretas em vez de `Badge` component com variantes porque as cores N0-N3 não mapeiam para as variantes semânticas do badge (default/secondary/destructive)
+
+**Pendente:** Nada — P10 completo.
+
+---
 
 ### 2026-05-27 — P9 Worker de sync + retry
 
