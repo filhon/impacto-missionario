@@ -460,7 +460,7 @@ Marque conforme avança. Não pule etapas.
 - [x] P5 — Tela contadores rápidos
 - [x] P6 — Registro pessoa N0/N1
 - [x] P7 — Registro pessoa N2/N3 + consentimento
-- [ ] P8 — Dexie + persistência local
+- [x] P8 — Dexie + persistência local
 - [ ] P9 — Worker de sync + retry
 - [ ] P10 — Dashboard líder
 - [ ] P11 — Dashboard coordenador
@@ -470,6 +470,41 @@ Marque conforme avança. Não pule etapas.
 - [ ] P15 — Deploy Vercel + smoke tests + onboarding
 
 ## Log de sessão
+
+### 2026-05-27 — P8 Dexie + persistência local
+
+- Criado `lib/dexie/db.ts` — `ImpactoDB` estende Dexie com 3 tables (`activity_events`, `people`, `session`), schema de índice `client_event_id, status, next_retry_at, created_at`, banco nomeado `impacto-missionario`
+- Criado `lib/dexie/repos.ts` — 9 funções repositório:
+  - `saveActivityEventLocal` / `savePersonLocal` — inserem registro com `status: "pending"`, `attempts: 0`, `created_at: now`
+  - `getPendingActivityEvents` / `getPendingPeople` — query por `status === "pending"` com limit
+  - `markActivitySynced` / `markPersonSynced` — batch atualiza status para `"synced"` via `anyOf()`
+  - `markActivityFailed` / `markPersonFailed` — atualiza para `"failed"` + incrementa `attempts` + seta `last_error`
+  - `countPending` — retorna contagem de pending activities + people (paralelo via `Promise.all`)
+- Modificado `components/counter-screen.tsx` (P5):
+  - Remove `useInsertActivityEvents` (TanStack mutation → Supabase direto)
+  - `handleIncrement` agora cria N registros com UUID v7, gera lat/lng, chama `saveActivityEventLocal` em paralelo via `Promise.all`
+  - Estado `saving` substitui `mutation.isPending` para desabilitar botões durante save
+- Modificado `app/(app)/pessoa/novo/form-n0.tsx` (P6) — antes de chamar `registerPerson`, gera `clientEventId` e chama `savePersonLocal`; aborta se local save falhar
+- Modificado `app/(app)/pessoa/novo/form-n1.tsx` (P6) — mesmo padrão, campos `neighborhood`, `city`, `need_type`, `prayer_request` mapeados para o schema Dexie
+- Modificado `app/(app)/pessoa/novo/form-n2.tsx` (P7) — mesmo padrão + `name`, `phone`, `conversion_decision`, `consent_text_shown`, `consent_timestamp`
+- Modificado `app/(app)/pessoa/novo/form-n3.tsx` (P7):
+  - Upload de fotos ganhou loop de retry (3 tentativas com backoff 1s/2s)
+  - Se upload falha, salva pessoa localmente sem `photo_url`/`consent_proof_url` e exibe warning toast (não bloqueia)
+  - Save local antes de `registerPerson` com mesmas regras
+- Modificado `components/ui/app-header.tsx` (P4):
+  - Importa `useLiveQuery` do `dexie-react-hooks`
+  - Usa `useLiveQuery(() => countPending(), [])` para badge de pendências ao vivo
+  - Mostra badge `total` (activities + people) apenas quando > 0
+- `tsc --noEmit` passa sem erros
+
+**Decisões:**
+- `use-insert-activity-events.ts` mantido (não removido) — pode ser reutilizado pelo sync worker em P9 para insert em lote no servidor
+- Server action `registerPerson` continua sendo chamada após save local — a persistência local é o caminho primário, e o sync eventual para Supabase via worker será implementado em P9
+- Badge no header soma `activities + people` — ambos pendentes são relevantes pro usuário saber quantos registros aguardam sync
+
+**Pendente:** Nada — P8 completo.
+
+---
 
 ### 2026-05-27 — P7 Registro pessoa N2/N3 + consentimento
 
@@ -487,13 +522,14 @@ Marque conforme avança. Não pule etapas.
   - Submit chama `registerPerson` com consent_level=2 + consentTextShown
 - Criado `app/(app)/pessoa/novo/form-n3.tsx` — componente FormN3:
   - Mesmo bloco de consentimento com `CONSENT_TEXTS[3]`
-  - Todos os campos de N2 + Endereço (textarea), Foto da pessoa (input file accept="image/*" capture="environment"), Foto da assinatura (input file com hint explicativo)
+  - Todos os campos de N2 + Endereço (textarea), Foto da pessoa (input file accept="image/\*" capture="environment"), Foto da assinatura (input file com hint explicativo)
   - Upload: comprime cada imagem via `compressImage`, faz upload para bucket `people-photos` em paralelo no path `${userId}/${clientEventId}/photo.jpg` e `/consent.jpg` usando o browser client do Supabase (autenticado), gera signed URL com expiração de 1 ano
   - Submit gera `clientEventId` (uuidv7) no client antes do upload, depois chama `registerPerson` com consent_level=3 + photoUrl + consentProofUrl
 - Modificado `app/(app)/pessoa/novo/nova-pessoa.tsx` — substituídos placeholders "N2 — em breve" / "N3 — em breve" por `<FormN2>` e `<FormN3>`
 - `pnpm next build` compila sem erros
 
 **Decisões:**
+
 - Upload de fotos é feito no client component (não na server action) porque requer File API + compressão client-side com `browser-image-compression` e upload direto ao Storage usando o browser client autenticado do Supabase
 - `clientEventId` é gerado no client para N3 (antes do upload) e passado pra server action, garantindo que o path do storage coincida com o `client_event_id` da tabela
 - Phone mask usa handler simples com `replace(/\D/g, "")` + formatação posicional em vez de biblioteca externa (mas-only input, sem dependência extra)

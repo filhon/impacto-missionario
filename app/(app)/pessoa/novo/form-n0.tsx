@@ -11,13 +11,28 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { savePersonLocal } from "@/lib/dexie/repos";
+import { uuidv7 } from "@/lib/uuid/v7";
 
 export function FormN0({ activityHint }: { activityHint?: string }) {
   const [isPending, startTransition] = useTransition();
 
   function handleConfirm() {
     startTransition(async () => {
+      const clientEventId = uuidv7();
+
+      try {
+        await savePersonLocal({
+          client_event_id: clientEventId,
+          consent_level: 0,
+        });
+      } catch {
+        toast.error("Erro ao salvar localmente");
+        return;
+      }
+
       const result = await registerPerson({
+        clientEventId,
         consentLevel: 0,
         activityHint,
       });

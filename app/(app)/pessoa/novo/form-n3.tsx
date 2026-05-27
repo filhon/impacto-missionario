@@ -19,6 +19,7 @@ import { CONSENT_TEXTS } from "@/lib/consent/texts";
 import { compressImage } from "@/lib/image/compress";
 import { createClient } from "@/lib/supabase/client";
 import { uuidv7 } from "@/lib/uuid/v7";
+import { savePersonLocal } from "@/lib/dexie/repos";
 
 const NEED_TYPES = [
   { value: "oração", label: "Oração" },
@@ -66,30 +67,35 @@ export function FormN3({
     clientEventId: string,
     name: string,
   ): Promise<string | null> {
-    try {
-      const compressed = await compressImage(file);
-      const path = `${userId}/${clientEventId}/${name}.jpg`;
-      const { error: uploadError } = await supabase.storage
-        .from("people-photos")
-        .upload(path, compressed, {
-          contentType: "image/jpeg",
-          upsert: true,
-        });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const compressed = await compressImage(file);
+        const path = `${userId}/${clientEventId}/${name}.jpg`;
+        const { error: uploadError } = await supabase.storage
+          .from("people-photos")
+          .upload(path, compressed, {
+            contentType: "image/jpeg",
+            upsert: true,
+          });
 
-      if (uploadError) {
-        console.error("Erro ao fazer upload:", uploadError);
-        return null;
+        if (uploadError) {
+          if (attempt < 2)
+            await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
+          continue;
+        }
+
+        const { data: signedData } = await supabase.storage
+          .from("people-photos")
+          .createSignedUrl(path, 60 * 60 * 24 * 365);
+
+        return signedData?.signedUrl ?? null;
+      } catch (err) {
+        console.error("Erro ao processar imagem:", err);
+        if (attempt < 2)
+          await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
       }
-
-      const { data: signedData } = await supabase.storage
-        .from("people-photos")
-        .createSignedUrl(path, 60 * 60 * 24 * 365);
-
-      return signedData?.signedUrl ?? null;
-    } catch (err) {
-      console.error("Erro ao processar imagem:", err);
-      return null;
     }
+    return null;
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -133,8 +139,33 @@ export function FormN3({
         uploadFile(consentFile, user.id, clientEventId, "consent"),
       ]);
 
-      if (!photoUrl || !consentProofUrl) {
-        toast.error("Erro ao fazer upload das imagens");
+      if (!photoUrl)
+        toast.warning("Foto da pessoa não pôde ser enviada — salvo sem foto");
+      if (!consentProofUrl)
+        toast.warning(
+          "Foto da assinatura não pôde ser enviada — salvo sem foto",
+        );
+
+      try {
+        await savePersonLocal({
+          client_event_id: clientEventId,
+          consent_level: 3,
+          name,
+          phone: phoneDigits,
+          neighborhood: (formData.get("neighborhood") as string) || undefined,
+          city: (formData.get("city") as string) || undefined,
+          need_type: needType || undefined,
+          prayer_request:
+            (formData.get("prayerRequest") as string) || undefined,
+          conversion_decision: conversionDecision || undefined,
+          consent_text_shown: CONSENT_TEXTS[3],
+          consent_timestamp: new Date().toISOString(),
+          address: (formData.get("address") as string) || undefined,
+          photo_url: photoUrl ?? undefined,
+          consent_proof_url: consentProofUrl ?? undefined,
+        });
+      } catch {
+        toast.error("Erro ao salvar localmente");
         return;
       }
 
@@ -151,8 +182,8 @@ export function FormN3({
         conversionDecision,
         consentTextShown: CONSENT_TEXTS[3],
         address: (formData.get("address") as string) || undefined,
-        photoUrl,
-        consentProofUrl,
+        photoUrl: photoUrl ?? undefined,
+        consentProofUrl: consentProofUrl ?? undefined,
       });
       if (result?.error) {
         toast.error(result.error);

@@ -6,7 +6,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useSession } from "@/lib/context/session";
-import { useInsertActivityEvents } from "@/lib/hooks/use-insert-activity-events";
+import { saveActivityEventLocal } from "@/lib/dexie/repos";
+import { uuidv7 } from "@/lib/uuid/v7";
 import { ACTIVITY_TYPES, type ActivityType } from "@/types/domain";
 
 interface CounterScreenProps {
@@ -17,9 +18,9 @@ export function CounterScreen({ tipo }: CounterScreenProps) {
   const [count, setCount] = useState(0);
   const [lat, setLat] = useState<number | null>(null);
   const [lng, setLng] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
-  const { user, team, event } = useSession();
-  const mutation = useInsertActivityEvents();
+  const { team } = useSession();
   const activity = ACTIVITY_TYPES[tipo];
 
   useEffect(() => {
@@ -33,32 +34,32 @@ export function CounterScreen({ tipo }: CounterScreenProps) {
     );
   }, []);
 
-  function handleIncrement(n: number) {
-    const teamId = team?.id;
-    if (!teamId) {
+  async function handleIncrement(n: number) {
+    if (!team?.id) {
       toast.error("Erro ao salvar — equipa não encontrada");
       return;
     }
 
-    mutation.mutate(
-      {
-        activityType: tipo,
-        count: n,
-        lat,
-        lng,
-        userId: user.id,
-        teamId,
-        eventId: event.id,
-      },
-      {
-        onSuccess: () => {
-          setCount((prev) => prev + n);
-        },
-        onError: () => {
-          toast.error("Erro ao salvar — tentando novamente");
-        },
-      },
-    );
+    setSaving(true);
+    const now = new Date().toISOString();
+
+    try {
+      const records = Array.from({ length: n }, () => ({
+        client_event_id: uuidv7(),
+        activity_type: tipo,
+        count: 1,
+        lat: lat ?? undefined,
+        lng: lng ?? undefined,
+        occurred_at: now,
+      }));
+
+      await Promise.all(records.map((r) => saveActivityEventLocal(r)));
+      setCount((prev) => prev + n);
+    } catch {
+      toast.error("Erro ao salvar — tentando novamente");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -84,7 +85,7 @@ export function CounterScreen({ tipo }: CounterScreenProps) {
       <div className="w-full max-w-sm flex flex-col gap-3">
         <button
           onClick={() => handleIncrement(1)}
-          disabled={mutation.isPending}
+          disabled={saving}
           className="w-full h-20 text-2xl font-bold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           +1
@@ -92,14 +93,14 @@ export function CounterScreen({ tipo }: CounterScreenProps) {
         <div className="flex gap-3">
           <button
             onClick={() => handleIncrement(5)}
-            disabled={mutation.isPending}
+            disabled={saving}
             className="flex-1 h-16 text-xl font-semibold rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             +5
           </button>
           <button
             onClick={() => handleIncrement(10)}
-            disabled={mutation.isPending}
+            disabled={saving}
             className="flex-1 h-16 text-xl font-semibold rounded-xl bg-secondary text-secondary-foreground hover:bg-secondary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             +10

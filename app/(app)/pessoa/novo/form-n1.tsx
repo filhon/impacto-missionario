@@ -14,6 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { savePersonLocal } from "@/lib/dexie/repos";
+import { uuidv7 } from "@/lib/uuid/v7";
 
 const NEED_TYPES = [
   { value: "oração", label: "Oração" },
@@ -38,7 +40,25 @@ export function FormN1({
     const formData = new FormData(e.currentTarget);
 
     startTransition(async () => {
+      const clientEventId = uuidv7();
+
+      try {
+        await savePersonLocal({
+          client_event_id: clientEventId,
+          consent_level: 1,
+          neighborhood: (formData.get("neighborhood") as string) || undefined,
+          city: (formData.get("city") as string) || undefined,
+          need_type: needType || undefined,
+          prayer_request:
+            (formData.get("prayerRequest") as string) || undefined,
+        });
+      } catch {
+        toast.error("Erro ao salvar localmente");
+        return;
+      }
+
       const result = await registerPerson({
+        clientEventId,
         consentLevel: 1,
         activityHint,
         neighborhood: formData.get("neighborhood") as string,

@@ -1,10 +1,14 @@
 "use client";
 
+import { useLiveQuery } from "dexie-react-hooks";
 import { useSession } from "@/lib/context/session";
+import { countPending } from "@/lib/dexie/repos";
 import { Badge } from "@/components/ui/badge";
 
 export function AppHeader() {
   const { event, team } = useSession();
+  const pending = useLiveQuery(() => countPending(), []);
+  const total = pending ? pending.activities + pending.people : 0;
 
   return (
     <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-border bg-background px-4">
@@ -31,9 +35,11 @@ export function AppHeader() {
       </div>
 
       <div className="flex items-center gap-1">
-        <Badge variant="secondary" className="text-xs tabular-nums">
-          0
-        </Badge>
+        {total > 0 && (
+          <Badge variant="secondary" className="text-xs tabular-nums">
+            {total}
+          </Badge>
+        )}
       </div>
     </header>
   );
