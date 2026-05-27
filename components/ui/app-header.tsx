@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useSession } from "@/lib/context/session";
 import { countPending } from "@/lib/dexie/repos";
@@ -37,9 +38,14 @@ export function AppHeader() {
 
       <div className="flex items-center gap-1">
         {total > 0 && (
-          <Badge variant="secondary" className="text-xs tabular-nums">
-            {total}
-          </Badge>
+          <Link href="/sync">
+            <Badge
+              variant="secondary"
+              className="text-xs tabular-nums cursor-pointer hover:opacity-80"
+            >
+              {total}
+            </Badge>
+          </Link>
         )}
         <ThemeToggle />
       </div>

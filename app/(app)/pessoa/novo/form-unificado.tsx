@@ -53,6 +53,8 @@ export function FormUnificado({
 
   // Seção 3: Dados completos (expansível, só se consentido)
   const [showFullData, setShowFullData] = useState(false);
+
+  const currentConsentText = showFullData ? CONSENT_TEXTS[3] : CONSENT_TEXTS[2];
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [consentFile, setConsentFile] = useState<File | null>(null);
 
@@ -161,9 +163,7 @@ export function FormUnificado({
         consentLevel = 0;
       }
 
-      const consentTextShown = consentChecked
-        ? CONSENT_TEXTS[consentLevel === 3 ? 3 : 2]
-        : undefined;
+      const consentTextShown = consentChecked ? currentConsentText : undefined;
 
       let photoUrl: string | undefined;
       let consentProofUrl: string | undefined;
@@ -361,7 +361,7 @@ export function FormUnificado({
               <p className="text-sm font-semibold text-primary">
                 Leia em voz alta para a pessoa:
               </p>
-              <p className="text-base leading-relaxed">{CONSENT_TEXTS[2]}</p>
+              <p className="text-base leading-relaxed">{currentConsentText}</p>
               <label className="flex items-start gap-3 cursor-pointer">
                 <Checkbox
                   checked={consentChecked}
@@ -412,7 +412,12 @@ export function FormUnificado({
             {consentChecked && (
               <button
                 type="button"
-                onClick={() => setShowFullData((v) => !v)}
+                onClick={() => {
+                  setShowFullData((v) => {
+                    if (!v) setConsentChecked(false); // expandindo para N3, forçar releitura
+                    return !v;
+                  });
+                }}
                 className="flex items-center justify-between rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-accent"
               >
                 <div>

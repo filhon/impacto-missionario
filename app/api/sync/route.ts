@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { type NextRequest } from "next/server";
+import type { LocalActivityEvent, LocalPerson } from "@/lib/dexie/db";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -25,8 +26,12 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const events: any[] = Array.isArray(body.events) ? body.events : [];
-  const people: any[] = Array.isArray(body.people) ? body.people : [];
+  const events = (
+    Array.isArray(body.events) ? body.events : []
+  ) as LocalActivityEvent[];
+  const people = (
+    Array.isArray(body.people) ? body.people : []
+  ) as LocalPerson[];
 
   const accepted: string[] = [];
   const duplicates: string[] = [];
