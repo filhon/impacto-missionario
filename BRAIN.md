@@ -459,7 +459,7 @@ Marque conforme avança. Não pule etapas.
 - [x] P4 — Layout shell + nav + auth guard
 - [x] P5 — Tela contadores rápidos
 - [x] P6 — Registro pessoa N0/N1
-- [ ] P7 — Registro pessoa N2/N3 + consentimento
+- [x] P7 — Registro pessoa N2/N3 + consentimento
 - [ ] P8 — Dexie + persistência local
 - [ ] P9 — Worker de sync + retry
 - [ ] P10 — Dashboard líder
@@ -470,6 +470,38 @@ Marque conforme avança. Não pule etapas.
 - [ ] P15 — Deploy Vercel + smoke tests + onboarding
 
 ## Log de sessão
+
+### 2026-05-27 — P7 Registro pessoa N2/N3 + consentimento
+
+- Criado `lib/consent/texts.ts` — `CONSENT_TEXTS` constante com as frases de consentimento para níveis 2 e 3 (conforme especificado no BRAIN.md)
+- Criado `lib/image/compress.ts` — `compressImage` helper que usa `browser-image-compression` (maxSizeMB: 0.2, maxWidthOrHeight: 1280, useWebWorker: true, fileType: image/jpeg)
+- Modificado `app/(app)/pessoa/novo/actions.ts` — estendida interface `RegisterPersonInput` com campos N2/N3: `name`, `phone`, `conversionDecision`, `consentTextShown`, `address`, `photoUrl`, `consentProofUrl`, `clientEventId` (para N3 gerar no client). Server action `registerPerson` agora:
+  - Aceita `clientEventId` opcional (se não fornecido, gera via uuidv7 internamente como antes)
+  - Insere `consent_text_shown`, `consent_timestamp` e demais campos em `people_reached`
+  - Quando `consentTextShown` é fornecido, insere registro em `consent_logs` (person_id, collected_by, consent_level, text_shown, collected_at)
+- Criado `app/(app)/pessoa/novo/form-n2.tsx` — componente FormN2:
+  - Bloco de consentimento no topo (não modal): Card com `border-2 border-primary`, padding generoso, título "Leia em voz alta pra pessoa:", frase `CONSENT_TEXTS[2]` em `text-lg`, checkbox "Li a frase em voz alta e a pessoa concordou em participar"
+  - Formulário com todos os campos desabilitados (`disabled`) enquanto checkbox de consentimento não marcado: Nome (input required min 2), WhatsApp (input tel required com máscara BR via handler `formatPhone`: (XX) XXXXX-XXXX), Bairro (com datalist), Cidade, Tipo de necessidade (select nativo), Pedido de oração (textarea), Checkbox "Aceitou a Cristo hoje"
+  - Botão "Salvar" desabilitado até consentimento marcado
+  - Validação client-side: nome < 2 chars ou phone inválido mostra toast de erro
+  - Submit chama `registerPerson` com consent_level=2 + consentTextShown
+- Criado `app/(app)/pessoa/novo/form-n3.tsx` — componente FormN3:
+  - Mesmo bloco de consentimento com `CONSENT_TEXTS[3]`
+  - Todos os campos de N2 + Endereço (textarea), Foto da pessoa (input file accept="image/*" capture="environment"), Foto da assinatura (input file com hint explicativo)
+  - Upload: comprime cada imagem via `compressImage`, faz upload para bucket `people-photos` em paralelo no path `${userId}/${clientEventId}/photo.jpg` e `/consent.jpg` usando o browser client do Supabase (autenticado), gera signed URL com expiração de 1 ano
+  - Submit gera `clientEventId` (uuidv7) no client antes do upload, depois chama `registerPerson` com consent_level=3 + photoUrl + consentProofUrl
+- Modificado `app/(app)/pessoa/novo/nova-pessoa.tsx` — substituídos placeholders "N2 — em breve" / "N3 — em breve" por `<FormN2>` e `<FormN3>`
+- `pnpm next build` compila sem erros
+
+**Decisões:**
+- Upload de fotos é feito no client component (não na server action) porque requer File API + compressão client-side com `browser-image-compression` e upload direto ao Storage usando o browser client autenticado do Supabase
+- `clientEventId` é gerado no client para N3 (antes do upload) e passado pra server action, garantindo que o path do storage coincida com o `client_event_id` da tabela
+- Phone mask usa handler simples com `replace(/\D/g, "")` + formatação posicional em vez de biblioteca externa (mas-only input, sem dependência extra)
+- Select de necessidade mantém elemento nativo `<select>` (mesmo padrão de FormN1) para consistência e compatibilidade com disabled state
+
+**Pendente:** Nada — P7 completo.
+
+---
 
 ### 2026-05-27 — P6 Registro pessoa N0/N1
 

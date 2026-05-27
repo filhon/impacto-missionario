@@ -4,6 +4,8 @@ import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { FormN0 } from "./form-n0";
 import { FormN1 } from "./form-n1";
+import { FormN2 } from "./form-n2";
+import { FormN3 } from "./form-n3";
 
 interface NovaPessoaProps {
   initialConsentLevel: number | null;
@@ -84,10 +86,10 @@ export function NovaPessoa({
         <FormN1 activityHint={activityHint} neighborhoods={neighborhoods} />
       )}
       {consentLevel === 2 && (
-        <p className="text-center text-muted-foreground">N2 — em breve</p>
+        <FormN2 activityHint={activityHint} neighborhoods={neighborhoods} />
       )}
       {consentLevel === 3 && (
-        <p className="text-center text-muted-foreground">N3 — em breve</p>
+        <FormN3 activityHint={activityHint} neighborhoods={neighborhoods} />
       )}
     </div>
   );
