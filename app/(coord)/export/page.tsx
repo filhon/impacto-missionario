@@ -14,9 +14,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Download, FileText } from "lucide-react";
+import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { exportCsv } from "./actions";
+import { ExportPdfCard } from "@/components/export-pdf-card";
 
 export default function ExportPage() {
   const { event } = useSession();
@@ -208,23 +209,12 @@ export default function ExportPage() {
         </CardContent>
       </Card>
 
-      <Card className="opacity-50">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="size-4" />
-            Exportar PDF
-          </CardTitle>
-          <CardDescription>
-            Relatório consolidado do evento em formato PDF. Disponível em breve.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button disabled variant="outline">
-            <FileText className="size-4" />
-            Baixar PDF
-          </Button>
-        </CardContent>
-      </Card>
+      <ExportPdfCard
+        eventId={event.id}
+        startDate={startDate}
+        endDate={endDate}
+        selectedTeams={selectedTeams}
+      />
     </div>
   );
 }

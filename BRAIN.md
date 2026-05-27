@@ -36,7 +36,7 @@ shadcn/ui            latest
 TanStack Query       v5
 Dexie.js             v4
 Supabase JS          v2
-react-pdf            v3 (geração PDF no client)
+react-pdf            v4 (geração PDF no client, @react-pdf/renderer)
 uuid                 v10 (v7 namespace)
 date-fns             v4 (locale pt-BR)
 recharts             v2
@@ -469,11 +469,50 @@ Marque conforme avança. Não pule etapas.
 - [x] P10 — Dashboard líder
 - [x] P11 — Dashboard coordenador
 - [x] P12 — Export CSV
-- [ ] P13 — Export PDF
+- [x] P13 — Export PDF
 - [ ] P14 — PWA manifest + offline shell + install prompt
 - [ ] P15 — Deploy Vercel + smoke tests + onboarding
 
 ## Log de sessão
+
+### 2026-05-27 — P13 Export PDF
+
+- Criado `lib/pdf/RelatorioPDF.tsx` — client component com `@react-pdf/renderer`:
+  - **Capa**: label "Relatório de Impacto", nome do evento, divisor roxo, datas (formatadas dd/mm/aaaa) e região — centralizado em fundo cinza claro
+  - **Resumo**: título "Resumo", grid com KPI cards — um por activity_type (com bolinha colorida do `ACTIVITY_TYPES`, label uppercase, valor em negrito) + "Pessoas alcançadas" + "Conversões"
+  - **Por dia**: uma página por dia com Data como título, tabela "Total por equipe" (2 colunas: Equipe | Total), tabela "Total por atividade" (2 colunas: Atividade | Total), ambas com header cinza
+  - **Bairros**: página "Bairros alcançados", lista em grid 2-col com bullet points
+  - **LGPD**: página "Política de retenção de dados" com descrição dos níveis N0–N3 e referência à LGPD art. 18
+  - Estilos: fonte limpa, bordas `#e2e8f0`, cores consistentes com o dominio
+- Estendido `app/(coord)/export/actions.ts` — server action `aggregateForReport(filters)`:
+  - Autentica via `supabase.auth.getUser()` + valida role `coord`
+  - Busca `events` (name, start_date, end_date, region) — sem PII
+  - Query `activity_events` com filtros startDate/endDate/teamIds, seleciona `activity_type, count, team_id, occurred_at`
+  - Query `people_reached` com mesmos filtros, seleciona `conversion_decision, neighborhood, consent_level, team_id, created_at`
+  - Busca `teams` (id, name) para resolver nomes das equipes
+  - Agrega server-side: `totais` (soma por activity_type), `totalPessoas` (count rows), `totalConversoes` (people `conversion_decision=true` + activities `conversao`), `bairrosAlcancados` (distinct neighborhoods com consent_level >= 1, ordenado), `porDia` (mapa dia → activity type totals + team totals)
+  - Retorna struct `RelatorioReportData` sem PII (nome/phone/endereço nunca saem do banco)
+- Criado `components/export-pdf-card.tsx` — client component:
+  - TanStack Query chama `aggregateForReport(filters)` com os mesmos filtros de data/equipe do CSV
+  - `next/dynamic` com `ssr: false` para `PDFDownloadLink` e `RelatorioPDF` (evita ESM bundling issue no servidor)
+  - `PDFDownloadLink` renderiza botão "Baixar PDF" com loading state "Gerando PDF…"
+  - Fallback: botão desabilitado "Carregando…" enquanto query não resolve
+  - Mensagem de erro em vermelho se server action retornar `{ error }`
+- Modificado `app/(coord)/export/page.tsx` — substituído card PDF placeholder `opacity-50` por `<ExportPdfCard>`
+- Modificado `next.config.ts` — adicionado `transpilePackages: ["@react-pdf/renderer"]` para resolução ESM durante build
+- `tsc --noEmit` passa sem erros, `next build` compila com sucesso
+
+**Decisões:**
+
+- `transpilePackages` necessário porque `@react-pdf/renderer` é ESM-only (`"type": "module"`); `serverExternalPackages` conflita com `transpilePackages` então optou-se apenas pelo transpile
+- `next/dynamic` com `ssr: false` usado tanto para `PDFDownloadLink` quanto para `RelatorioPDF` — ambos só montam no client, evitando erros de SSR com módulos canvas/buffer
+- Agregação server-side replica exatamente a lógica do dashboard (client-side aggregation no coord) — `totais[type] += row.count`, `people.filter(conversion_decision)`, `new Set(neighborhood)`, mapa por dia — garantindo que os números do PDF batem com o dashboard
+- Nomes de equipe resolvidos via query separada `teams` (id → name) para evitar join complexo com group by — mantém a query simples e tipo-segura
+- Dados de pessoas com consent_level < 1 têm neighborhood excluído do set de bairros, mesmo princípio do CSV export (defesa em profundidade)
+
+**Pendente:** Nada — P13 completo.
+
+---
 
 ### 2026-05-27 — P12 Export CSV
 
