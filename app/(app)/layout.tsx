@@ -4,7 +4,11 @@ import { SessionProvider } from "@/lib/context/session";
 import { AppHeader } from "@/components/ui/app-header";
 import { BottomNav } from "@/components/ui/bottom-nav";
 
-export default async function HomePage() {
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const supabase = await createClient();
 
   const {
@@ -34,6 +38,7 @@ export default async function HomePage() {
       .select("id, name, color")
       .eq("id", userData.team_id)
       .single();
+
     teamData = data;
   }
 
@@ -64,11 +69,7 @@ export default async function HomePage() {
     >
       <div className="flex min-h-screen flex-col">
         <AppHeader />
-        <main className="flex flex-1 items-center justify-center pb-20">
-          <h1 className="text-2xl font-bold tracking-tight">
-            Impacto Missionário
-          </h1>
-        </main>
+        <main className="flex-1 pb-20">{children}</main>
         <BottomNav />
       </div>
     </SessionProvider>

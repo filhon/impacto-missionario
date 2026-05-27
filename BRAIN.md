@@ -51,12 +51,15 @@ Sem Capacitor. Sem Stripe. Sem Resend. Sem Upstash. Sem Framer Motion (cortado p
     /login                # entrada por código
   /(app)
     layout.tsx            # auth guard + nav
-    page.tsx              # home com botões de atividade
+    page.tsx              # home com botões de atividade (futuro)
     /atividade/[tipo]
     /pessoa/novo
     /pessoa/[id]
     /sync
     /perfil
+      page.tsx            # editar perfil + sair
+      actions.ts          # updateProfile, signOut
+  providers.tsx           # QueryClient + Toaster
   /(lider)
     /equipe
   /(coord)
@@ -67,11 +70,13 @@ Sem Capacitor. Sem Stripe. Sem Resend. Sem Upstash. Sem Framer Motion (cortado p
     /health
     /sync
 /components
-  /ui                     # shadcn
+  /ui                     # shadcn + app custom (app-header, bottom-nav)
   /counters
   /forms
   /dashboards
 /lib
+  /context
+    session.tsx           # SessionProvider + useSession
   /supabase               # client + server clients
   /dexie                  # schema + helpers
   /sync                   # worker + retry
@@ -458,7 +463,7 @@ Marque conforme avança. Não pule etapas.
 - [x] P1 — Schema + RLS no Supabase + Storage bucket
 - [x] P2 — Tipos gerados + cliente Supabase
 - [x] P3 — Login por código de equipe
-- [ ] P4 — Layout shell + nav + auth guard
+- [x] P4 — Layout shell + nav + auth guard
 - [ ] P5 — Tela contadores rápidos
 - [ ] P6 — Registro pessoa N0/N1
 - [ ] P7 — Registro pessoa N2/N3 + consentimento
@@ -472,6 +477,28 @@ Marque conforme avança. Não pule etapas.
 - [ ] P15 — Deploy Vercel + smoke tests + onboarding
 
 ## Log de sessão
+
+### 2026-05-27 — P4 Layout shell + nav + auth guard
+
+- Criado `lib/context/session.tsx` — `SessionProvider` + `useSession` hook com tipos `SessionUser`, `SessionTeam`, `SessionEvent`
+- Criado `app/providers.tsx` — client component com `QueryClientProvider` (staleTime 30s, refetchOnWindowFocus false) + `<Toaster />`
+- Modificado `app/layout.tsx` — substituído `<Toaster />` direto por `<Providers>` wrapper (react-query + toast)
+- Criado `app/(app)/layout.tsx` — server component: auth guard (`supabase.auth.getUser()` → redirect `/login`), fetch user com team/event join, `SessionProvider` envolvendo `AppHeader` + `main {children}` + `BottomNav`
+- Criado `components/ui/app-header.tsx` — sticky header: nome do evento (esquerda), badge da equipe com cor via inline style (centro), badge pendentes placeholder "0" (direita)
+- Criado `components/ui/bottom-nav.tsx` — fixed bottom nav com 3 ícones (lucide-react: `Home`, `Users`, `User`), active state `text-primary`, `safe-area-inset-bottom` para iOS
+- Modificado `app/page.tsx` — root `/` vira home autenticada com auth guard + header + bottom nav (exibe "Impacto Missionário")
+- Criado `app/(app)/perfil/page.tsx` — exibe equipe, formulário editar nome/telefone, botão "Sair"
+- Criado `app/(app)/perfil/actions.ts` — server actions `updateProfile` (valida + update `users`) e `signOut` (signOut + redirect `/login`)
+- `pnpm typecheck` passa
+
+**Decisões:**
+
+- `app/page.tsx` e `app/(app)/page.tsx` conflitariam (ambos mapeiam para `/`), então mantivemos o root page com auth guard + nav inline, e `(app)/layout.tsx` como layout separado para as demais rotas protegidas (`/perfil`, `/pessoa/novo`, etc.)
+- Dados de sessão buscados via 3 queries separadas (user, team, event) em vez de JOIN para evitar complexidade de tipos com Supabase generics
+
+**Pendente:** Nada — P4 completo.
+
+---
 
 ### 2026-05-26 — P3 Login por código de equipe
 
