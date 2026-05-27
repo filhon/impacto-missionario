@@ -51,7 +51,7 @@ Sem Capacitor. Sem Stripe. Sem Resend. Sem Upstash. Sem Framer Motion (cortado p
     /login                # entrada por código
   /(app)
     layout.tsx            # auth guard + nav
-    page.tsx              # home com botões de atividade (futuro)
+    page.tsx              # home grid 2x4 de contadores
     /atividade/[tipo]
     /pessoa/novo
     /pessoa/[id]
@@ -293,26 +293,15 @@ create policy "user insert log" on consent_logs for insert
 
 ```ts
 // types/domain.ts
-import {
-  BookMarked,
-  BookOpen,
-  FileText,
-  DoorOpen,
-  HeartHandshake,
-  Stethoscope,
-  Radio,
-  HandHelping,
-} from "lucide-react";
-
 export const ACTIVITY_TYPES = {
-  biblia: { label: "Bíblia completa", icon: BookMarked, color: "#7c3aed" },
-  joao: { label: "Evangelho de João", icon: BookOpen, color: "#0ea5e9" },
-  folheto: { label: "Folheto", icon: FileText, color: "#10b981" },
-  visita: { label: "Visita porta a porta", icon: DoorOpen, color: "#f59e0b" },
-  oracao: { label: "Pedido de oração", icon: HandHelping, color: "#ec4899" },
-  conversao: { label: "Conversão", icon: HeartHandshake, color: "#ef4444" },
-  medico: { label: "Atendimento médico", icon: Stethoscope, color: "#06b6d4" },
-  radio: { label: "Rádio áudio Bíblia", icon: Radio, color: "#8b5cf6" },
+  biblia: { label: "Bíblia completa", color: "#7c3aed", icon: "Book" },
+  joao: { label: "Evangelho de João", color: "#0ea5e9", icon: "BookOpenText" },
+  folheto: { label: "Folheto", color: "#10b981", icon: "FileText" },
+  visita: { label: "Visita porta a porta", color: "#f59e0b", icon: "DoorOpen" },
+  oracao: { label: "Pedido de oração", color: "#ec4899", icon: "HandHeart" },
+  conversao: { label: "Conversão", color: "#ef4444", icon: "Heart" },
+  medico: { label: "Atendimento médico", color: "#06b6d4", icon: "Stethoscope" },
+  radio: { label: "Rádio áudio Bíblia", color: "#8b5cf6", icon: "Radio" },
 } as const;
 
 export type ActivityType = keyof typeof ACTIVITY_TYPES;
@@ -464,7 +453,7 @@ Marque conforme avança. Não pule etapas.
 - [x] P2 — Tipos gerados + cliente Supabase
 - [x] P3 — Login por código de equipe
 - [x] P4 — Layout shell + nav + auth guard
-- [ ] P5 — Tela contadores rápidos
+- [x] P5 — Tela contadores rápidos
 - [ ] P6 — Registro pessoa N0/N1
 - [ ] P7 — Registro pessoa N2/N3 + consentimento
 - [ ] P8 — Dexie + persistência local
@@ -477,6 +466,33 @@ Marque conforme avança. Não pule etapas.
 - [ ] P15 — Deploy Vercel + smoke tests + onboarding
 
 ## Log de sessão
+
+### 2026-05-27 — P5 Contadores rápidos
+
+- Modificado `types/domain.ts` — adicionado campo `icon` (string Lucide) a `ACTIVITY_TYPES`
+- Removido `app/page.tsx` — home movida para dentro de `(app)/` para compartilhar `(app)/layout.tsx`
+- Criado `app/(app)/page.tsx` — grid 2×4 (`grid-cols-2 md:grid-cols-4`) de Links para `/atividade/[tipo]`, cada um com ícone Lucide, label pt-BR, cor de fundo via `ACTIVITY_TYPES`, `min-h-[96px] aspect-square rounded-xl`
+- Criado `app/(app)/atividade/[tipo]/page.tsx` — server component que valida `tipo` em `ACTIVITY_TYPES` (senão `notFound()`) e renderiza `<CounterScreen>`
+- Criado `components/counter-screen.tsx` — client component:
+  - Header local com ícone (bolinha colorida) + label + botão voltar
+  - Contador central grande (`text-8xl font-bold tabular-nums`)
+  - Botões +1 (primário, full-width, h-20 text-2xl), +5/+10 (secundários lado a lado)
+  - Botão "Vincular a pessoa" → `/pessoa/novo?activity=${tipo}`
+  - GPS one-shot no mount (`navigator.geolocation.getCurrentPosition`, timeout 5s), salva lat/lng em state; falha/negação segue sem coordenadas
+  - `handleIncrement(n)` gera N inserts (`count=1`, `client_event_id` UUID v7, `occurred_at` now) via `useInsertActivityEvents` mutation
+  - Sucesso → incrementa contador local; erro → toast "Erro ao salvar — tentando novamente"
+- Criado `lib/hooks/use-insert-activity-events.ts` — mutation TanStack Query que insere N registros em `activity_events` via Supabase client
+- `pnpm typecheck` passa
+
+**Decisões:**
+
+- `app/page.tsx` removido para evitar conflito de rota com `app/(app)/page.tsx`; `(app)/layout.tsx` já provê auth guard, SessionProvider, AppHeader e BottomNav para todas as rotas do grupo
+- `icon` armazenado como string em vez de componente React para manter `ACTIVITY_TYPES` como constante pura e compatível com server components; mapeamento string → componente feito via `ICONS` record nos pontos de uso
+- Contador é estado React local (`useState(0)`) — zera ao navegar para outra página e voltar, conforme critério de aceite
+
+**Pendente:** Nada — P5 completo.
+
+---
 
 ### 2026-05-27 — P4 Layout shell + nav + auth guard
 
