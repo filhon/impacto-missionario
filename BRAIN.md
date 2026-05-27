@@ -461,7 +461,7 @@ Marque conforme avança. Não pule etapas.
 - [x] P6 — Registro pessoa N0/N1
 - [x] P7 — Registro pessoa N2/N3 + consentimento
 - [x] P8 — Dexie + persistência local
-- [ ] P9 — Worker de sync + retry
+- [x] P9 — Worker de sync + retry
 - [ ] P10 — Dashboard líder
 - [ ] P11 — Dashboard coordenador
 - [ ] P12 — Export CSV
@@ -470,6 +470,45 @@ Marque conforme avança. Não pule etapas.
 - [ ] P15 — Deploy Vercel + smoke tests + onboarding
 
 ## Log de sessão
+
+### 2026-05-27 — P9 Worker de sync + retry
+
+- Criado `app/api/sync/route.ts` — `POST /api/sync` endpoint:
+  - Autentica via `createClient()` do Supabase SSR, busca `event_id` + `team_id` do usuário
+  - Valida body com arrays `events` e `people`
+  - People: `upsert({ onConflict: 'client_event_id', ignoreDuplicates: false })` — insere ou atualiza, mapeia `client_event_id` local → `person_id` do servidor
+  - Consent_logs: insere apenas se não existir registro para `person_id` (idempotência via `maybeSingle()`)
+  - Events: `insert` com tratamento de `23505` (duplicate key → adiciona a `duplicates`)
+  - Retorna `{ accepted: string[], duplicates: string[], errors: Array<{ client_event_id, message }> }`
+- Criado `lib/sync/worker.ts` — sync worker client-side:
+  - `syncOnce()`: verifica `navigator.onLine`, busca pending items (limit 20 cada), filtra por `next_retry_at`, envia POST `/api/sync`, marca synced/failed, agenda retry em erro
+  - `scheduleRetry(table, item)`: incrementa `attempts`, calcula delay via `RETRY_DELAYS = [15, 30, 60, 120, 300, 600, 1800]` segundos, seta `next_retry_at` via `db[table].update()`
+  - `startSyncWorker()`: executa `syncOnce()` imediatamente + `setInterval` a cada 15s
+  - `stopSyncWorker()`: `clearInterval`
+  - 5xx/fetch fail → retry; 4xx semântico (erros no JSON) → marca como `failed`
+- Modificado `app/providers.tsx` — `useEffect(() => { startSyncWorker() }, [])` para iniciar worker ao montar
+- Modificado `lib/dexie/repos.ts` — 4 novos helpers:
+  - `markItemFailed(clientEventId, error)` — busca em ambas tabelas e marca como failed
+  - `countSynced()` — conta items com status `synced` criados nas últimas 24h
+  - `getFailedItems()` — retorna array flat de failed items (tipo, label, error, attempts) de ambas tabelas
+  - `resetItemRetry(clientEventId)` — reseta `status → pending`, `attempts → 0`, limpa `next_retry_at` e `last_error` para re-tentar
+- Criado `app/(app)/sync/page.tsx` — página de status de sincronização:
+  - Badge Online (verde) / Offline (amarelo) com listener `online`/`offline` do window
+  - 3 cards em grid: Pendentes, Sincronizados (últimas 24h), Falhas — todos via `useLiveQuery`
+  - Botão "Sincronizar agora" com spinner e toast de resultado
+  - Lista expansível "Itens com falha": label, tipo, mensagem de erro + botão "Tentar de novo" que chama `resetItemRetry`
+- `tsc --noEmit` passa sem erros
+
+**Decisões:**
+
+- `activity_events` usa `insert` (não upsert) por ser append-only — duplicatas são capturadas via `23505` e tratadas como `duplicates` (não erro)
+- Consent_logs usa `maybeSingle()` para checar existência antes de inserir, evitando duplicatas sem necessidade de constraint composta no banco
+- Worker usa `scheduleRetry` separada para cada tabela (`if/else`) em vez de `db[table]` dinâmico para preservar type safety sem `any`
+- `resetItemRetry` usa `Promise.all` com updates em ambas tabelas — Dexie ignora keys que não existem (affect count = 0)
+
+**Pendente:** Nada — P9 completo.
+
+---
 
 ### 2026-05-27 — P8 Dexie + persistência local
 
@@ -498,6 +537,7 @@ Marque conforme avança. Não pule etapas.
 - `tsc --noEmit` passa sem erros
 
 **Decisões:**
+
 - `use-insert-activity-events.ts` mantido (não removido) — pode ser reutilizado pelo sync worker em P9 para insert em lote no servidor
 - Server action `registerPerson` continua sendo chamada após save local — a persistência local é o caminho primário, e o sync eventual para Supabase via worker será implementado em P9
 - Badge no header soma `activities + people` — ambos pendentes são relevantes pro usuário saber quantos registros aguardam sync

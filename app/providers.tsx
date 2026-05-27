@@ -1,8 +1,9 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
+import { startSyncWorker } from "@/lib/sync/worker";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -16,6 +17,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       }),
   );
+
+  useEffect(() => {
+    startSyncWorker();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
