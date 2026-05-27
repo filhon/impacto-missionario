@@ -300,7 +300,11 @@ export const ACTIVITY_TYPES = {
   visita: { label: "Visita porta a porta", color: "#f59e0b", icon: "DoorOpen" },
   oracao: { label: "Pedido de oração", color: "#ec4899", icon: "HandHeart" },
   conversao: { label: "Conversão", color: "#ef4444", icon: "Heart" },
-  medico: { label: "Atendimento médico", color: "#06b6d4", icon: "Stethoscope" },
+  medico: {
+    label: "Atendimento médico",
+    color: "#06b6d4",
+    icon: "Stethoscope",
+  },
   radio: { label: "Rádio áudio Bíblia", color: "#8b5cf6", icon: "Radio" },
 } as const;
 
@@ -454,7 +458,7 @@ Marque conforme avança. Não pule etapas.
 - [x] P3 — Login por código de equipe
 - [x] P4 — Layout shell + nav + auth guard
 - [x] P5 — Tela contadores rápidos
-- [ ] P6 — Registro pessoa N0/N1
+- [x] P6 — Registro pessoa N0/N1
 - [ ] P7 — Registro pessoa N2/N3 + consentimento
 - [ ] P8 — Dexie + persistência local
 - [ ] P9 — Worker de sync + retry
@@ -466,6 +470,28 @@ Marque conforme avança. Não pule etapas.
 - [ ] P15 — Deploy Vercel + smoke tests + onboarding
 
 ## Log de sessão
+
+### 2026-05-27 — P6 Registro pessoa N0/N1
+
+- Criado `app/(app)/pessoa/novo/page.tsx` — server component que lê `?consent=N&activity=X` de searchParams, busca bairros já registrados no evento (distinct, até 200) para o datalist, renderiza `<NovaPessoa>`
+- Criado `app/(app)/pessoa/novo/actions.ts` — server action `registerPerson`: valida auth, busca user/team/event do servidor, insere `people_reached` (com `client_event_id=uuidv7()`, consent_level e campos), se `activityHint` presente insere `activity_event` com `person_id` vinculado, redireciona para `/pessoa/[id]/confirmacao`
+- Criado `app/(app)/pessoa/novo/nova-pessoa.tsx` — client component com dois steps:
+  - `seletor`: 4 cards verticais (N0–N3) com badge, título, descrição e `ChevronRight` — click avança para o form
+  - `form`: renderiza `<FormN0>` ou `<FormN1>` conforme nível (N2/N3 placeholder "em breve")
+- Criado `app/(app)/pessoa/novo/form-n0.tsx` — Card "Confirmar registro de pessoa anônima" + texto + botão Confirmar que chama `registerPerson` via `useTransition`
+- Criado `app/(app)/pessoa/novo/form-n1.tsx` — form com Bairro (input + datalist), Cidade, Tipo de necessidade (select nativo: oração/financeiro/saúde/espiritual/outro), Pedido de oração (textarea max 500), botão Salvar
+- Criado `app/(app)/pessoa/[id]/confirmacao/page.tsx` — página client com `CircleCheck`, "Registrado!" e dois botões (Registrar outra pessoa, Voltar pra home)
+- `pnpm typecheck` e `pnpm next build` passam sem erros
+
+**Decisões:**
+
+- Select de tipo de necessidade usa elemento nativo `<select>` em vez do componente shadcn `Select` (base-ui) para compatibilidade direta com FormData sem necessidade de estado controlado extra
+- Confirmação de página usa `"use client"` com `useRouter().push()` porque o componente `Button` (base-ui) não expõe `asChild` para composição com `Link`
+- Bairros para datalist são buscados no server component (`page.tsx`) e passados como prop, evitando waterfall cliente-servidor
+
+**Pendente:** Nada — P6 completo.
+
+---
 
 ### 2026-05-27 — P5 Contadores rápidos
 
