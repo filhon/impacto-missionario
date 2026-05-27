@@ -470,10 +470,46 @@ Marque conforme avança. Não pule etapas.
 - [x] P11 — Dashboard coordenador
 - [x] P12 — Export CSV
 - [x] P13 — Export PDF
-- [ ] P14 — PWA manifest + offline shell + install prompt
+- [x] P14 — PWA manifest + offline shell + install prompt
 - [ ] P15 — Deploy Vercel + smoke tests + onboarding
 
 ## Log de sessão
+
+### 2026-05-27 — P14 PWA + offline shell
+
+- Criado `public/manifest.webmanifest` — PWA manifest com `display: standalone`, `orientation: portrait`, cores `#0a0a0a`, 3 ícones (192, 512, maskable 512)
+- Criado `public/sw.js` — Service Worker:
+  - **Cache shell**: 13 rotas pré-cacheadas no install (`/`, `/login`, `/perfil`, `/sync`, `/pessoa/novo`, 8 atividade routes)
+  - **Skip waiting** + **clients claim** no activate/install
+  - **Network-first** para navegação com fallback pro cache (offline funcional)
+  - **Cache-first** para assets estáticos com cache on response
+  - **Nunca cacheia** `/api/*` (pass-through)
+- Gerados ícones placeholder em `public/icons/` (`icon-192.png`, `icon-512.png`, `maskable-512.png`) via sharp — fundo preto com "IM" branco
+- Criado `components/pwa/sw-register.tsx` — client component que registra `/sw.js` via `navigator.serviceWorker.register`
+- Criado `components/pwa/install-prompt.tsx` — client component:
+  - Captura evento `beforeinstallprompt`, previne default, armazena evento deferido
+  - Aguarda 30s antes de mostrar banner (apenas se não dispensado na sessão via `sessionStorage`)
+  - Banner fixo bottom: "Instalar Impacto Missionário" + botão "Instalar" + dismiss (X)
+  - Instalar → chama `deferredPrompt.prompt()`, aguarda `userChoice`, esconde banner
+  - Dismiss → flag `sessionStorage` "não mostrar mais nessa sessão"
+- Criado `components/ui/offline-banner.tsx` — client component:
+  - Listener `window 'online'/'offline'`, estado inicial via `navigator.onLine`
+  - Quando offline: banner amarelo fixo no topo com `WifiOff` e texto "Você está offline. Os registros serão sincronizados quando voltar a conexão."
+  - Some automaticamente ao voltar online
+- Modificado `app/layout.tsx` — adicionado `manifest: "/manifest.webmanifest"` no metadata, `<link rel="manifest">`, `<meta name="theme-color" content="#0a0a0a">` no `<head>`
+- Modificado `app/providers.tsx` — importa e renderiza `<SWRegister />`, `<OfflineBanner />`, `<InstallPrompt />`
+- `tsc --noEmit` passa sem erros
+
+**Decisões:**
+
+- `install-prompt.tsx` usa `sessionStorage` em vez de `localStorage` para flag de dismiss — a cada nova sessão o banner reaparece, dando chance pro usuário instalar sem precisar de um mecanismo de "reset" persistente
+- Offline banner renderizado em `providers.tsx` (acima do `{children}`) para ficar fixo no topo independente de rota ou layout — position fixed com `z-[100]` garante sobreposição mesmo ao header sticky
+- SW cache strategy: network-first para navegação (rotas HTML podem ter conteúdo dinâmico, ex. contadores) com fallback pro cache; cache-first para assets estáticos (JS, CSS, imagens) — prioriza velocidade sem quebrar offline
+- Ícones gerados via sharp com SVG → PNG por ser zero-dep extra (sharp já é dependência transitiva de next)
+
+**Pendente:** Nada — P14 completo.
+
+---
 
 ### 2026-05-27 — P13 Export PDF
 

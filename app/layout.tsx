@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   title: "Impacto Missionário",
   description:
     "Aplicativo offline-first para registro de atividades missionárias",
+  manifest: "/manifest.webmanifest",
+  other: {
+    "theme-color": "#0a0a0a",
+  },
 };
 
 export default function RootLayout({
@@ -31,6 +35,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="theme-color" content="#0a0a0a" />
+      </head>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <ThemeProvider
           attribute="class"
