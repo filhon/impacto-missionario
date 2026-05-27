@@ -53,6 +53,10 @@ export async function syncOnce(): Promise<{ ok: number; failed: number }> {
     await markActivitySynced(okEventIds);
     await markPersonSynced(okPeopleIds);
 
+    if (okIds.length > 0 && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("sync-complete"));
+    }
+
     for (const err of errors ?? []) {
       await markItemFailed(err.client_event_id, err.message);
     }

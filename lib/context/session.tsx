@@ -15,6 +15,7 @@ export interface SessionTeam {
   id: string;
   name: string;
   color: string | null;
+  code_4dig?: string;
 }
 
 export interface SessionEvent {
