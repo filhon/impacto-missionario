@@ -454,10 +454,10 @@ supabase gen types typescript --local > types/database.ts
 
 Marque conforme avança. Não pule etapas.
 
-- [ ] P0 — Bootstrap (Next.js, deps, Tailwind, shadcn)
-- [ ] P1 — Schema + RLS no Supabase + Storage bucket
+- [x] P0 — Bootstrap (Next.js, deps, Tailwind, shadcn)
+- [x] P1 — Schema + RLS no Supabase + Storage bucket
 - [x] P2 — Tipos gerados + cliente Supabase
-- [ ] P3 — Login por código de equipe
+- [x] P3 — Login por código de equipe
 - [ ] P4 — Layout shell + nav + auth guard
 - [ ] P5 — Tela contadores rápidos
 - [ ] P6 — Registro pessoa N0/N1
@@ -473,6 +473,19 @@ Marque conforme avança. Não pule etapas.
 
 ## Log de sessão
 
+### 2026-05-26 — P3 Login por código de equipe
+
+- Criado `lib/supabase/service.ts` — cliente Supabase com service role key para operações admin (`createClient` do `@supabase/supabase-js`)
+- Criado `app/(public)/login/actions.ts` — server action `loginWithCode`: valida formato (4 dígitos, nome ≥ 2), busca team por `(event_id, code_4dig)`, gera email `vol-{uuidv7()}@impacto.local` + senha aleatória, cria auth user via `auth.admin.createUser()`, insere perfil em `users` com `role='voluntario'`, faz `signInWithPassword` pra criar sessão, redirect pra `/`
+- Criado `app/(public)/login/page.tsx` — server component que verifica sessão existente (`supabase.auth.getUser()`) e redireciona pra `/` se já logado, senão renderiza `LoginForm`
+- Criado `app/(public)/login/login-form.tsx` — client component com Card (max-w-sm), logo placeholder "Impacto Missionário", subtítulo, inputs (código numérico autofocus text-3xl, nome, whatsapp opcional), botão "Entrar" full-width, mensagem de erro + sonner toast
+- Modificado `app/layout.tsx` — adicionado `<Toaster />` do sonner
+- `pnpm typecheck` passa
+
+**Pendente:** Nada — P3 completo.
+
+---
+
 ### 2026-05-26 — P2 Tipos + cliente Supabase
 
 - Criado `types/database.ts` — tipos gerados do schema (7 tabelas: events, teams, users, people_reached, activity_events, follow_ups, consent_logs) com helpers `Tables<>`, `TablesInsert<>`, `TablesUpdate<>`, `Enums<>`
@@ -487,6 +500,7 @@ Marque conforme avança. Não pule etapas.
 - `pnpm typecheck` passa
 
 **Notas:**
+
 - `supabase gen types --local` requer Docker Desktop, que não estava disponível; tipos foram gerados manualmente do migration SQL (equivalente ao output do CLI)
 - Checklist P2 marcado como concluído
 
