@@ -468,12 +468,43 @@ Marque conforme avança. Não pule etapas.
 - [x] P9 — Worker de sync + retry
 - [x] P10 — Dashboard líder
 - [x] P11 — Dashboard coordenador
-- [ ] P12 — Export CSV
+- [x] P12 — Export CSV
 - [ ] P13 — Export PDF
 - [ ] P14 — PWA manifest + offline shell + install prompt
 - [ ] P15 — Deploy Vercel + smoke tests + onboarding
 
 ## Log de sessão
+
+### 2026-05-27 — P12 Export CSV
+
+- Criado `app/(coord)/export/actions.ts` — server action `exportCsv(filters)`:
+  - Autentica via `supabase.auth.getUser()` + valida role `coord`
+  - Query: `activity_events` com joins `teams(name)`, `users(name)` (inner) e `people_reached(consent_level, neighborhood, city)` (left join via FK `person_id`)
+  - Filtros: `startDate`/`endDate` (`.gte`/`.lte` em `occurred_at`), `teamIds` (`.in()` quando array não vazio)
+  - Geração manual de CSV (escape de aspas e vírgula) — sem dependência de papaparse
+  - Header pt-BR: `event_id, equipe, voluntario, atividade, contagem, lat, lng, data_hora, pessoa_consentimento, pessoa_bairro, pessoa_cidade, notas`
+  - Privacidade: `pessoa_bairro` vazio se `consent_level < 1`; `pessoa_cidade` vazio se `consent_level < 2`; name/phone/address/photo_url nunca incluídos
+  - UTF-8 BOM (`\uFEFF`) para acentuação correta no Excel/LibreOffice
+  - Filename: `impacto-missionario-{evento-normalizado}-{YYYY-MM-DD}.csv` (acentos removidos, espaços → hífen)
+  - Retorna `{ csv, filename }` — download é feito no client via Blob + ObjectURL
+- Criado `app/(coord)/export/page.tsx` — client component:
+  - Card "Exportar CSV completo": date range (inputs `type="date"`, default = duração do evento via query `events.start_date/end_date`), multi-select de equipes (checkboxes com chips de seleção visual, default = todas), botão "Baixar CSV" com estado de loading (spinner CSS nativo `animate-spin` + "Exportando…")
+  - Card "Exportar PDF" placeholder com `opacity-50` e botão disabled — reservado para P13
+  - Erro/sucesso via `toast` do sonner
+- Modificado `components/ui/coord-bottom-nav.tsx` — adicionado item "Exportar" (`FileText`) na bottom nav do coord, rota `/export`
+- `tsc --noEmit` passa sem erros
+
+**Decisões:**
+
+- Server action retorna `{ csv, filename }` em vez de `Response` porque server actions Next.js são RPC e consomem JSON no client; o download é feito criando `Blob` + `URL.createObjectURL` + anchor click no client
+- CSV gerado manualmente (sem papaparse) porque CSV é simples o suficiente: escape de aspas (`"` → `""`) e células com vírgula/quebra-de-linha entre aspas duplas — evita dependência extra
+- Team filter usa `Set<string>` com checkboxes em vez de multi-select do base-ui (que não tem suporte nativo a multi-select); chips com `border-primary` + `bg-primary/5` quando checked dão feedback visual claro
+- `normalize("NFD")` + `replace(/[\u0300-\u036f]/g, "")` no filename remove acentos mantendo legibilidade — sem dependência de slugify
+- Nome/telefone/endereço/foto nunca entram no CSV por política de privacidade (defesa em profundidade: mesmo que o coord tenha acesso, a exportação bulk não inclui PII sensível)
+
+**Pendente:** Nada — P12 completo.
+
+---
 
 ### 2026-05-27 — P11 Dashboard coordenador
 

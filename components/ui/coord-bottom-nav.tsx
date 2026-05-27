@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users } from "lucide-react";
+import { FileText, LayoutDashboard, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/coord", label: "Dashboard", icon: LayoutDashboard },
   { href: "/equipes", label: "Equipes", icon: Users },
+  { href: "/export", label: "Exportar", icon: FileText },
 ];
 
 export function CoordBottomNav() {
