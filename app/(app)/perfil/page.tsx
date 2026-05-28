@@ -6,14 +6,6 @@ import { updateProfile, signOut } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LogOut, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -33,72 +25,84 @@ export default function PerfilPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-6 p-4 pt-8 pb-16">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Perfil</h1>
-          {team && (
-            <Badge
-              variant="outline"
-              className="mt-1 flex w-fit items-center gap-1.5 border-none text-xs font-medium"
-              style={
-                team.color
-                  ? { backgroundColor: team.color + "20", color: team.color }
-                  : undefined
-              }
-            >
-              <span
-                className="size-2 shrink-0 rounded-full"
-                style={{ backgroundColor: team.color ?? undefined }}
-              />
-              {team.name}
-            </Badge>
-          )}
-        </div>
+    <div className="mx-auto flex max-w-md flex-col pb-20">
+      {/* Page header */}
+      <div className="px-4 pt-8 pb-6">
+        <h1 className="text-2xl font-bold tracking-tight">Perfil</h1>
+        {team && (
+          <Badge
+            variant="outline"
+            className="mt-2 flex w-fit items-center gap-1.5 border-none text-xs font-medium"
+            style={
+              team.color
+                ? { backgroundColor: team.color + "20", color: team.color }
+                : undefined
+            }
+          >
+            <span
+              className="size-2 shrink-0 rounded-full"
+              style={{ backgroundColor: team.color ?? undefined }}
+            />
+            {team.name}
+          </Badge>
+        )}
       </div>
 
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle>Editar dados</CardTitle>
-          <CardDescription>Atualize nome e telefone</CardDescription>
-        </CardHeader>
-        <form action={handleUpdate} ref={formRef}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                id="name"
-                name="name"
-                defaultValue={user.name}
-                required
-                minLength={2}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">WhatsApp</Label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                defaultValue={user.phone ?? ""}
-              />
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button type="submit" className="w-full">
-              <Save className="size-4" />
-              Salvar
-            </Button>
-          </CardFooter>
-        </form>
-      </Card>
+      {/* Edit form — no card wrapper, spacious and field-friendly */}
+      <form
+        action={handleUpdate}
+        ref={formRef}
+        className="flex flex-col gap-5 px-4"
+      >
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="name" className="text-sm font-semibold">
+            Nome
+          </Label>
+          <Input
+            id="name"
+            name="name"
+            defaultValue={user.name}
+            required
+            minLength={2}
+            className="h-12 text-base"
+          />
+        </div>
 
-      <form action={signOut}>
-        <Button type="submit" variant="destructive" className="w-full">
-          <LogOut className="size-4" />
-          Sair da conta
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="phone" className="text-sm font-semibold">
+            WhatsApp
+          </Label>
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            defaultValue={user.phone ?? ""}
+            className="h-12 text-base"
+          />
+        </div>
+
+        <Button
+          type="submit"
+          className="mt-2 h-14 w-full text-base font-semibold"
+        >
+          <Save className="size-4" />
+          Salvar
         </Button>
       </form>
+
+      {/* Destructive action — visually separated from the form */}
+      <div className="mt-auto px-4 pt-16">
+        <form action={signOut}>
+          <Button
+            type="submit"
+            variant="ghost"
+            className="h-12 w-full text-sm text-destructive hover:bg-destructive/8 hover:text-destructive"
+          >
+            <LogOut className="size-4" />
+            Sair da conta
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

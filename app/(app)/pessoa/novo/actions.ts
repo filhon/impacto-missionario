@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { uuidv7 } from "@/lib/uuid/v7";
 import { ACTIVITY_TYPES } from "@/types/domain";
 
@@ -110,26 +111,31 @@ export async function registerPerson(input: RegisterPersonInput) {
   const clientEventId = input.clientEventId ?? uuidv7();
   const now = new Date().toISOString();
 
-  const { data: person, error } = await supabase
+  const hasIdentification = input.consentLevel >= 2;
+  const hasFullData = input.consentLevel >= 3;
+
+  const service = createServiceClient();
+
+  const { data: person, error } = await service
     .from("people_reached")
     .insert({
       client_event_id: clientEventId,
       consent_level: input.consentLevel,
-      registered_by: userData.id,
+      registered_by: user.id,
       team_id: userData.team_id,
       event_id: userData.event_id,
       neighborhood: input.neighborhood ?? null,
       city: input.city ?? null,
       need_type: input.needType ?? null,
       prayer_request: input.prayerRequest ?? null,
-      name: input.name ?? null,
-      phone: input.phone ?? null,
+      name: hasIdentification ? (input.name ?? null) : null,
+      phone: hasIdentification ? (input.phone ?? null) : null,
       conversion_decision: input.conversionDecision ?? null,
       consent_text_shown: input.consentTextShown ?? null,
       consent_timestamp: input.consentTextShown ? now : null,
-      address: input.address ?? null,
-      photo_url: input.photoUrl ?? null,
-      consent_proof_url: input.consentProofUrl ?? null,
+      address: hasFullData ? (input.address ?? null) : null,
+      photo_url: hasFullData ? (input.photoUrl ?? null) : null,
+      consent_proof_url: hasFullData ? (input.consentProofUrl ?? null) : null,
     })
     .select("id")
     .single();
@@ -140,9 +146,9 @@ export async function registerPerson(input: RegisterPersonInput) {
   }
 
   if (input.consentTextShown) {
-    const { error: consentError } = await supabase.from("consent_logs").insert({
+    const { error: consentError } = await service.from("consent_logs").insert({
       person_id: person.id,
-      collected_by: userData.id,
+      collected_by: user.id,
       consent_level: input.consentLevel,
       text_shown: input.consentTextShown,
       collected_at: now,
@@ -154,13 +160,13 @@ export async function registerPerson(input: RegisterPersonInput) {
   }
 
   if (input.activityHint && person) {
-    const { error: activityError } = await supabase
+    const { error: activityError } = await service
       .from("activity_events")
       .insert({
         client_event_id: uuidv7(),
         event_id: userData.event_id,
         team_id: userData.team_id,
-        user_id: userData.id,
+        user_id: user.id,
         activity_type: input.activityHint,
         count: 1,
         lat: input.lat ?? null,

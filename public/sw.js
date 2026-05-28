@@ -1,19 +1,5 @@
-const CACHE = "impacto-v3";
-const SHELL = [
-  "/",
-  "/login",
-  "/perfil",
-  "/sync",
-  "/pessoa/novo",
-  "/atividade/biblia",
-  "/atividade/joao",
-  "/atividade/folheto",
-  "/atividade/visita",
-  "/atividade/oracao",
-  "/atividade/conversao",
-  "/atividade/medico",
-  "/atividade/radio",
-];
+const CACHE = "impacto-v4";
+const SHELL = ["/", "/login", "/perfil", "/sync", "/pessoa/novo"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)));

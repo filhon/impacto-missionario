@@ -189,9 +189,9 @@ export default function EquipePage() {
   const isLoadingTotals = totalsRaw === undefined;
 
   return (
-    <div className="flex flex-col pb-6">
+    <div className="flex w-full flex-col pb-6">
       {/* Header */}
-      <div className="border-b border-border px-4 pb-4 pt-4">
+      <div className="border-b border-border px-4 pb-5 pt-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="truncate text-xl font-bold leading-tight">
@@ -201,7 +201,7 @@ export default function EquipePage() {
               type="button"
               onClick={handleCopyCode}
               aria-label="Copiar código da equipe"
-              className="mt-1.5 flex min-h-9 items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="mt-2 flex min-h-11 items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <code className="font-mono text-xs tracking-widest">
                 {team.code_4dig ?? "—"}
@@ -209,12 +209,14 @@ export default function EquipePage() {
               <Copy className="size-3.5" />
             </button>
           </div>
-          <div className="flex shrink-0 gap-4">
-            <div className="flex flex-col items-end gap-0.5 rounded-xl bg-muted/50 px-3 py-2">
+
+          {/* Summary stats — inline, no card chrome */}
+          <div className="flex shrink-0 items-start gap-6 pt-1">
+            <div className="flex flex-col items-end gap-0.5">
               {isLoadingTotals ? (
-                <Skeleton className="mb-0.5 h-6 w-10" />
+                <Skeleton className="h-7 w-10" />
               ) : (
-                <p className="text-xl font-bold tabular-nums leading-none">
+                <p className="text-2xl font-bold tabular-nums leading-none">
                   {totalAtividades}
                 </p>
               )}
@@ -222,11 +224,11 @@ export default function EquipePage() {
                 atividades
               </p>
             </div>
-            <div className="flex flex-col items-end gap-0.5 rounded-xl bg-muted/50 px-3 py-2">
+            <div className="flex flex-col items-end gap-0.5">
               {peopleCount === undefined ? (
-                <Skeleton className="mb-0.5 h-6 w-8" />
+                <Skeleton className="h-7 w-8" />
               ) : (
-                <p className="text-xl font-bold tabular-nums leading-none">
+                <p className="text-2xl font-bold tabular-nums leading-none">
                   {peopleCount}
                 </p>
               )}
@@ -269,12 +271,11 @@ export default function EquipePage() {
             })}
           </div>
         </div>
-        {/* Fade hint right edge */}
         <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-linear-to-l from-background to-transparent" />
       </div>
 
       {/* Tabs */}
-      <div className="px-4 pt-3">
+      <div className="min-w-0 px-4 pt-3">
         <Tabs defaultValue="atividades">
           <TabsList variant="line">
             <TabsTrigger value="atividades">Atividades recentes</TabsTrigger>
@@ -282,10 +283,10 @@ export default function EquipePage() {
           </TabsList>
 
           {/* Activities tab */}
-          <TabsContent value="atividades" className="pt-2">
-            {/* Mobile card list */}
+          <TabsContent value="atividades" className="pt-4">
+            {/* Mobile list */}
             <div className="sm:hidden">
-              {!activityRows && (
+              {!activityRows ? (
                 <div className="divide-y divide-border">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="flex items-center gap-3 py-3">
@@ -298,62 +299,65 @@ export default function EquipePage() {
                     </div>
                   ))}
                 </div>
-              )}
-              {activityRows?.length === 0 && (
-                <div className="py-10 text-center">
+              ) : activityRows.length === 0 ? (
+                <div className="py-12 text-center">
                   <p className="text-sm text-muted-foreground">
                     Nenhuma atividade registrada.
                   </p>
                 </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {activityRows.map((row) => {
+                    const activityConfig =
+                      ACTIVITY_TYPES[row.activity_type as ActivityType];
+                    const Icon = activityConfig
+                      ? ICONS[row.activity_type as ActivityType]
+                      : null;
+                    return (
+                      <div
+                        key={row.id}
+                        className="flex items-center gap-3 py-3"
+                      >
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                          {Icon && (
+                            <Icon
+                              className="size-4"
+                              style={{ color: activityConfig?.color }}
+                            />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">
+                            {activityConfig?.label ?? row.activity_type}
+                          </p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {row.volunteer?.name ?? "—"}&nbsp;&middot;&nbsp;
+                            {format(new Date(row.occurred_at), "dd/MM HH:mm", {
+                              locale: ptBR,
+                            })}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <span className="text-lg font-bold tabular-nums leading-none">
+                            {row.count}
+                          </span>
+                          {row.lat && row.lng ? (
+                            <a
+                              href={`https://www.google.com/maps?q=${row.lat},${row.lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-0.5 text-xs text-primary"
+                            >
+                              <MapPin className="size-3" />
+                              GPS
+                            </a>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
-              <div className="divide-y divide-border">
-                {activityRows?.map((row) => {
-                  const activityConfig =
-                    ACTIVITY_TYPES[row.activity_type as ActivityType];
-                  const Icon = activityConfig
-                    ? ICONS[row.activity_type as ActivityType]
-                    : null;
-                  return (
-                    <div key={row.id} className="flex items-center gap-3 py-3">
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                        {Icon && (
-                          <Icon
-                            className="size-4"
-                            style={{ color: activityConfig?.color }}
-                          />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">
-                          {activityConfig?.label ?? row.activity_type}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {row.volunteer?.name ?? "—"}&nbsp;&middot;&nbsp;
-                          {format(new Date(row.occurred_at), "dd/MM HH:mm", {
-                            locale: ptBR,
-                          })}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-1">
-                        <span className="text-lg font-bold tabular-nums leading-none">
-                          {row.count}
-                        </span>
-                        {row.lat && row.lng ? (
-                          <a
-                            href={`https://www.google.com/maps?q=${row.lat},${row.lng}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-0.5 text-xs text-primary"
-                          >
-                            <MapPin className="size-3" />
-                            GPS
-                          </a>
-                        ) : null}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
 
             {/* Desktop table */}
@@ -453,10 +457,10 @@ export default function EquipePage() {
           </TabsContent>
 
           {/* People tab */}
-          <TabsContent value="pessoas" className="pt-2">
-            {/* Mobile card list */}
+          <TabsContent value="pessoas" className="pt-4">
+            {/* Mobile list */}
             <div className="sm:hidden">
-              {!peopleRows && (
+              {!peopleRows ? (
                 <div className="divide-y divide-border">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <div key={i} className="flex items-center gap-3 py-3">
@@ -470,56 +474,60 @@ export default function EquipePage() {
                     </div>
                   ))}
                 </div>
-              )}
-              {peopleRows?.length === 0 && (
-                <div className="py-10 text-center">
+              ) : peopleRows.length === 0 ? (
+                <div className="py-12 text-center">
                   <p className="text-sm text-muted-foreground">
                     Nenhuma pessoa registrada.
                   </p>
                 </div>
-              )}
-              <div className="divide-y divide-border">
-                {peopleRows?.map((row) => (
-                  <div
-                    key={row.id}
-                    className={`flex items-center gap-3 py-3 ${row.consent_level >= 2 ? "cursor-pointer" : ""}`}
-                    onClick={() => {
-                      if (row.consent_level >= 2) {
-                        router.push(`/pessoa/${row.id}`);
-                      }
-                    }}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        {row.consent_level >= 2 && row.name ? (
-                          <p className="truncate text-sm font-medium">
-                            {row.name}
-                          </p>
-                        ) : (
-                          <p className="text-sm italic text-muted-foreground">
-                            Anônimo
-                          </p>
-                        )}
-                        <span
-                          className={`inline-flex h-5 shrink-0 items-center rounded-full px-2 text-xs font-medium ${CONSENT_BADGE[row.consent_level]}`}
-                        >
-                          N{row.consent_level}
-                        </span>
+              ) : (
+                <div className="divide-y divide-border">
+                  {peopleRows.map((row) => (
+                    <div
+                      key={row.id}
+                      className={`flex min-h-12 items-center gap-3 py-3 ${
+                        row.consent_level >= 2
+                          ? "cursor-pointer transition-colors active:bg-muted/60"
+                          : ""
+                      }`}
+                      onClick={() => {
+                        if (row.consent_level >= 2) {
+                          router.push(`/pessoa/${row.id}`);
+                        }
+                      }}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          {row.consent_level >= 2 && row.name ? (
+                            <p className="truncate text-sm font-medium">
+                              {row.name}
+                            </p>
+                          ) : (
+                            <p className="text-sm italic text-muted-foreground">
+                              Anônimo
+                            </p>
+                          )}
+                          <span
+                            className={`inline-flex h-5 shrink-0 items-center rounded-full px-2 text-xs font-medium ${CONSENT_BADGE[row.consent_level]}`}
+                          >
+                            N{row.consent_level}
+                          </span>
+                        </div>
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {row.registrant?.name ?? "—"}
+                          {row.neighborhood ? ` · ${row.neighborhood}` : ""}
+                          {row.created_at
+                            ? ` · ${format(new Date(row.created_at), "dd/MM", { locale: ptBR })}`
+                            : ""}
+                        </p>
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                        {row.registrant?.name ?? "—"}
-                        {row.neighborhood ? ` · ${row.neighborhood}` : ""}
-                        {row.created_at
-                          ? ` · ${format(new Date(row.created_at), "dd/MM", { locale: ptBR })}`
-                          : ""}
-                      </p>
+                      {row.consent_level >= 2 && (
+                        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                      )}
                     </div>
-                    {row.consent_level >= 2 && (
-                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Desktop table */}

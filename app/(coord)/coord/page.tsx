@@ -27,7 +27,6 @@ import {
   LineChart,
   Line,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -209,7 +208,7 @@ export default function CoordDashboard() {
         .select("user_id, occurred_at")
         .eq("event_id", event.id)
         .order("occurred_at", { ascending: false })
-        .limit(2000); // cap to prevent large transfers on big events
+        .limit(2000);
 
       if (!data) return new Map();
 
@@ -393,17 +392,17 @@ export default function CoordDashboard() {
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
-      </div>
+    <div className="flex flex-col gap-6 p-4 pb-8">
+      {/* Page header */}
+      <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
 
-      <div className="sticky top-12 z-40 -mx-4 bg-background px-4 py-2 shadow-sm">
+      {/* Sticky filter bar */}
+      <div className="sticky top-12 z-40 -mx-4 border-b border-border bg-background px-4 py-2.5">
         <button
           type="button"
           onClick={() => setFiltersOpen((v) => !v)}
           aria-expanded={filtersOpen}
-          className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <svg
             className={`size-4 transition-transform ${filtersOpen ? "rotate-180" : ""}`}
@@ -425,7 +424,7 @@ export default function CoordDashboard() {
         </button>
 
         {filtersOpen && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 pb-1">
+          <div className="mt-2.5 flex flex-wrap items-center gap-2 pb-1">
             <div className="flex items-center gap-2">
               <label className="text-xs font-medium text-muted-foreground">
                 De
@@ -489,155 +488,150 @@ export default function CoordDashboard() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <Activity className="size-3.5" />
-            <span>Atividades</span>
-          </div>
-          <p className="mt-2 text-2xl font-bold tabular-nums leading-none">
-            {kpis.totalActivities}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <Users className="size-3.5" />
-            <span>Pessoas</span>
-          </div>
-          <p className="mt-2 text-2xl font-bold tabular-nums leading-none">
-            {kpis.totalPeople}
-          </p>
-        </div>
-        <div className="col-span-2 rounded-2xl border border-primary/25 bg-primary/8 p-4 md:col-span-1">
+      {/* KPI block — conversões em destaque, secundários abaixo */}
+      <div className="flex flex-col gap-4">
+        {/* Conversões — linha única, destaque primário */}
+        <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
             <Heart className="size-3.5" />
             <span>Conversões</span>
           </div>
-          <p className="mt-2 text-[2rem] font-bold tabular-nums leading-none text-primary">
+          <p className="text-5xl font-bold tabular-nums leading-none text-primary">
             {kpis.totalConversions}
           </p>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-4">
-          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <MapPin className="size-3.5" />
-            <span>Bairros</span>
+
+        {/* Secundários — 3 na mesma linha */}
+        <div className="flex gap-6 border-t border-border pt-4">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Activity className="size-3.5" />
+              <span>Atividades</span>
+            </div>
+            <p className="text-2xl font-bold tabular-nums leading-none">
+              {kpis.totalActivities}
+            </p>
           </div>
-          <p className="mt-2 text-2xl font-bold tabular-nums leading-none">
-            {kpis.uniqueNeighborhoods}
-          </p>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Users className="size-3.5" />
+              <span>Pessoas</span>
+            </div>
+            <p className="text-2xl font-bold tabular-nums leading-none">
+              {kpis.totalPeople}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <MapPin className="size-3.5" />
+              <span>Bairros</span>
+            </div>
+            <p className="text-2xl font-bold tabular-nums leading-none">
+              {kpis.uniqueNeighborhoods}
+            </p>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card className="rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">
-              Total por equipe
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {barChartData.every((d) => d.total === 0) ? (
-              <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-                Nenhum dado disponível
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={barChartData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    className="stroke-border"
-                  />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 12 }}
-                    className="text-xs text-muted-foreground"
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12 }}
-                    className="text-xs text-muted-foreground"
-                  />
-                  <Tooltip />
-                  <Bar
-                    dataKey="total"
-                    fill="var(--color-primary, hsl(33 85% 34%))"
-                    radius={[4, 4, 0, 0]}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">
-              Total por dia
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {lineChartData.every((d) => d.total === 0) ||
-            lineChartData.length === 0 ? (
-              <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
-                Nenhum dado disponível
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={lineChartData}>
-                  <CartesianGrid
-                    strokeDasharray="3 3"
-                    className="stroke-border"
-                  />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fontSize: 12 }}
-                    className="text-xs text-muted-foreground"
-                    tickFormatter={(val) => format(new Date(val), "dd/MM")}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 12 }}
-                    className="text-xs text-muted-foreground"
-                  />
-                  <Tooltip
-                    labelFormatter={(val) =>
-                      format(new Date(val), "dd/MM/yyyy", { locale: ptBR })
-                    }
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="total"
-                    stroke="var(--color-primary, hsl(33 85% 34%))"
-                    strokeWidth={2}
-                    dot={{ r: 3 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">
-            Atividades no mapa
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-3">
-          {mapPoints.length === 0 ? (
-            <div className="flex h-80 items-center justify-center rounded-lg bg-muted text-sm text-muted-foreground">
-              Nenhuma atividade com localização registrada
+      {/* Charts — bare sections, no card chrome */}
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-foreground">
+            Total por equipe
+          </h2>
+          {barChartData.every((d) => d.total === 0) ? (
+            <div className="flex h-48 items-center justify-center rounded-lg border border-border text-sm text-muted-foreground">
+              Nenhum dado disponível
             </div>
           ) : (
-            <ActivityMap points={mapPoints} />
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={barChartData}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  className="stroke-border"
+                />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 12 }}
+                  className="text-xs text-muted-foreground"
+                />
+                <YAxis
+                  tick={{ fontSize: 12 }}
+                  className="text-xs text-muted-foreground"
+                />
+                <Tooltip />
+                <Bar
+                  dataKey="total"
+                  fill="var(--color-primary, hsl(33 85% 34%))"
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           )}
-        </CardContent>
-      </Card>
+        </section>
 
-      <Card className="rounded-2xl">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold">Equipes</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-semibold text-foreground">
+            Total por dia
+          </h2>
+          {lineChartData.every((d) => d.total === 0) ||
+          lineChartData.length === 0 ? (
+            <div className="flex h-48 items-center justify-center rounded-lg border border-border text-sm text-muted-foreground">
+              Nenhum dado disponível
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={lineChartData}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  className="stroke-border"
+                />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 12 }}
+                  className="text-xs text-muted-foreground"
+                  tickFormatter={(val) => format(new Date(val), "dd/MM")}
+                />
+                <YAxis
+                  tick={{ fontSize: 12 }}
+                  className="text-xs text-muted-foreground"
+                />
+                <Tooltip
+                  labelFormatter={(val) =>
+                    format(new Date(val), "dd/MM/yyyy", { locale: ptBR })
+                  }
+                />
+                <Line
+                  type="monotone"
+                  dataKey="total"
+                  stroke="var(--color-primary, hsl(33 85% 34%))"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </section>
+      </div>
+
+      {/* Map — no card wrapper, map has its own visual boundary */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-foreground">
+          Atividades no mapa
+        </h2>
+        {mapPoints.length === 0 ? (
+          <div className="flex h-80 items-center justify-center rounded-lg border border-border text-sm text-muted-foreground">
+            Nenhuma atividade com localização registrada
+          </div>
+        ) : (
+          <ActivityMap points={mapPoints} />
+        )}
+      </section>
+
+      {/* Teams table */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold text-foreground">Equipes</h2>
+        <div className="overflow-x-auto rounded-lg border border-border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -684,8 +678,8 @@ export default function CoordDashboard() {
               ))}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     </div>
   );
 }

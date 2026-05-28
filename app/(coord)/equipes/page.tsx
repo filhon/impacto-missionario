@@ -17,7 +17,6 @@ import {
   Shield,
   ShieldCheck,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -228,7 +227,10 @@ export default function CoordEquipesPage() {
       toast.success("Líder definido!");
       setSetLeaderOpen(null);
       setSelectedLeader("");
-      queryClient.invalidateQueries({ queryKey: ["coord", event?.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["coord", event?.id],
+        refetchType: "all",
+      });
     }
   };
 
@@ -274,7 +276,8 @@ export default function CoordEquipesPage() {
     (users ?? []).filter((u) => u.team_id === teamId);
 
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <div className="flex flex-col gap-6 p-4 pb-8">
+      {/* Page header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Equipes</h1>
         <Dialog open={newTeamOpen} onOpenChange={setNewTeamOpen}>
@@ -326,7 +329,7 @@ export default function CoordEquipesPage() {
                   </Button>
                 </div>
               </div>
-              <div className="flex gap-2 justify-end pt-2">
+              <div className="flex justify-end gap-2 pt-2">
                 <DialogClose render={<Button variant="outline" size="sm" />}>
                   Cancelar
                 </DialogClose>
@@ -343,6 +346,7 @@ export default function CoordEquipesPage() {
         </Dialog>
       </div>
 
+      {/* Team list */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {teams !== undefined && teams.length === 0 && (
           <div className="col-span-full py-12 text-center text-sm text-muted-foreground">
@@ -359,119 +363,125 @@ export default function CoordEquipesPage() {
           const activityCount = activityTotals?.get(team.id) ?? 0;
           const peopleCount = peopleTotals?.get(team.id) ?? 0;
 
+          const teamColor = team.color ?? "#0ea5e9";
+
           return (
-            <Card key={team.id} className="overflow-hidden rounded-2xl">
-              {/* Team color accent strip — thicker for visual anchor */}
+            <div
+              key={team.id}
+              className="flex flex-col gap-0 overflow-hidden rounded-2xl border"
+              style={{ borderColor: teamColor + "55" }}
+            >
+              {/* Header — tinted with team color */}
               <div
-                className="h-1.5"
-                style={{ backgroundColor: team.color ?? "#0ea5e9" }}
-              />
-
-              <CardHeader className="px-4 pb-2 pt-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <CardTitle className="text-base font-semibold leading-snug">
+                className="flex items-start justify-between gap-2 px-4 pt-4 pb-4"
+                style={{ backgroundColor: teamColor + "12" }}
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: teamColor }}
+                    />
+                    <p className="text-base font-semibold leading-snug">
                       {team.name}
-                    </CardTitle>
-                    <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-                      <Users className="size-3" />
-                      {memberCount} {memberCount === 1 ? "membro" : "membros"}
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label="Editar nome da equipe"
-                    className="mt-0.5 shrink-0"
-                    onClick={() => {
-                      setEditNameOpen(team.id);
-                      setEditNameValue(team.name);
-                    }}
-                  >
-                    <Pencil className="size-3.5" />
-                  </Button>
-                  <Dialog
-                    open={editNameOpen === team.id}
-                    onOpenChange={(open) => {
-                      if (!open) setEditNameOpen(null);
-                    }}
-                  >
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Editar nome da equipe</DialogTitle>
-                      </DialogHeader>
-                      <Input
-                        value={editNameValue}
-                        onChange={(e) => setEditNameValue(e.target.value)}
-                      />
-                      <div className="flex gap-2 justify-end">
-                        <DialogClose
-                          render={<Button variant="outline" size="sm" />}
-                        >
-                          Cancelar
-                        </DialogClose>
-                        <Button
-                          size="sm"
-                          onClick={() => handleEditName(team.id)}
-                        >
-                          Salvar
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </CardHeader>
-
-              <CardContent className="flex flex-col gap-4 px-4 pb-4 pt-1">
-                {/* Code + reset */}
-                <div className="flex items-center justify-between">
-                  <code className="rounded-md bg-muted px-3 py-2 font-mono text-2xl tracking-[0.3em] tabular-nums">
-                    {team.code_4dig}
-                  </code>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `O código "${team.code_4dig}" vai parar de funcionar. Gerar um novo?`,
-                        )
-                      ) {
-                        handleResetCode(team.id);
-                      }
-                    }}
-                  >
-                    <RefreshCw className="size-3.5" />
-                    Resetar
-                  </Button>
-                </div>
-
-                {/* Activity + people totals */}
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-xl bg-muted/60 px-3 py-2 text-center">
-                    <p className="text-lg font-bold tabular-nums leading-none">
-                      {activityCount}
-                    </p>
-                    <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                      atividades
                     </p>
                   </div>
-                  <div className="rounded-xl bg-muted/60 px-3 py-2 text-center">
-                    <p className="text-lg font-bold tabular-nums leading-none">
-                      {peopleCount}
-                    </p>
-                    <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
-                      pessoas
-                    </p>
+                  <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                    <Users className="size-3" />
+                    {memberCount} {memberCount === 1 ? "membro" : "membros"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Editar nome da equipe"
+                  className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  onClick={() => {
+                    setEditNameOpen(team.id);
+                    setEditNameValue(team.name);
+                  }}
+                >
+                  <Pencil className="size-3.5" />
+                </button>
+                <Dialog
+                  open={editNameOpen === team.id}
+                  onOpenChange={(open) => {
+                    if (!open) setEditNameOpen(null);
+                  }}
+                >
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Editar nome da equipe</DialogTitle>
+                    </DialogHeader>
+                    <Input
+                      value={editNameValue}
+                      onChange={(e) => setEditNameValue(e.target.value)}
+                    />
+                    <div className="flex justify-end gap-2">
+                      <DialogClose
+                        render={<Button variant="outline" size="sm" />}
+                      >
+                        Cancelar
+                      </DialogClose>
+                      <Button size="sm" onClick={() => handleEditName(team.id)}>
+                        Salvar
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
+              {/* Body */}
+              <div className="flex flex-col gap-0 px-4 pb-2">
+                {/* Stats em destaque + código inline */}
+                <div className="flex items-end justify-between gap-4 py-4">
+                  <div className="flex gap-5">
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-2xl font-bold tabular-nums leading-none">
+                        {activityCount}
+                      </p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        atividades
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-2xl font-bold tabular-nums leading-none">
+                        {peopleCount}
+                      </p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                        pessoas
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Código + resetar — agrupados à direita */}
+                  <div className="flex items-center gap-2">
+                    <code className="rounded bg-muted px-2 py-1 font-mono text-sm tracking-[0.2em] tabular-nums text-muted-foreground">
+                      {team.code_4dig}
+                    </code>
+                    <button
+                      type="button"
+                      aria-label="Resetar código"
+                      className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `O código "${team.code_4dig}" vai parar de funcionar. Gerar um novo?`,
+                          )
+                        ) {
+                          handleResetCode(team.id);
+                        }
+                      }}
+                    >
+                      <RefreshCw className="size-3.5" />
+                    </button>
                   </div>
                 </div>
 
-                {/* Leader row */}
-                <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5">
-                  <div className="flex min-w-0 items-center gap-2">
+                {/* Leader row — separado por linha */}
+                <div className="flex items-center justify-between gap-2 border-t border-border py-3">
+                  <div className="flex min-w-0 items-center gap-1.5 text-sm">
                     <ShieldCheck className="size-3.5 shrink-0 text-muted-foreground" />
-                    <span className="truncate text-sm">
+                    <span className="truncate">
                       {currentLeader?.name ?? (
                         <span className="italic text-muted-foreground">
                           Sem líder
@@ -492,8 +502,8 @@ export default function CoordEquipesPage() {
                   >
                     <DialogTrigger
                       render={
-                        <Button variant="ghost" size="xs">
-                          <UserCheck className="size-3" />
+                        <Button variant="ghost" size="sm">
+                          <UserCheck className="size-3.5" />
                           Definir
                         </Button>
                       }
@@ -504,10 +514,16 @@ export default function CoordEquipesPage() {
                       </DialogHeader>
                       <Select
                         value={selectedLeader}
-                        onValueChange={(v) => v && setSelectedLeader(v)}
+                        onValueChange={(v) => setSelectedLeader(v ?? "")}
                       >
                         <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Selecione um membro" />
+                          <SelectValue placeholder="Selecione um membro">
+                            {selectedLeader
+                              ? (teamUsers(team.id).find(
+                                  (u) => u.id === selectedLeader,
+                                )?.name ?? "Selecione um membro")
+                              : "Selecione um membro"}
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {teamUsers(team.id).map((u) => (
@@ -524,7 +540,7 @@ export default function CoordEquipesPage() {
                           )}
                         </SelectContent>
                       </Select>
-                      <div className="flex gap-2 justify-end">
+                      <div className="flex justify-end gap-2">
                         <DialogClose
                           render={<Button variant="outline" size="sm" />}
                         >
@@ -542,11 +558,11 @@ export default function CoordEquipesPage() {
                   </Dialog>
                 </div>
 
-                {/* Member toggle */}
+                {/* Member toggle — separado por linha */}
                 <button
                   type="button"
                   onClick={() => setExpandedTeam(isExpanded ? null : team.id)}
-                  className="-mx-1 flex items-center gap-1.5 rounded px-1 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  className={`flex items-center gap-1.5 py-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground ${isExpanded ? "" : "border-t border-border"}`}
                 >
                   {isExpanded ? (
                     <ChevronUp className="size-3.5" />
@@ -556,18 +572,18 @@ export default function CoordEquipesPage() {
                   Ver membros ({members.length})
                 </button>
 
-                {/* Expanded member list */}
+                {/* Expanded member list — divide-y, no nested cards */}
                 {isExpanded && (
-                  <div className="flex flex-col gap-1.5 pt-1">
+                  <div className="-mx-4 border-t border-border">
                     {members.length === 0 && (
-                      <p className="py-3 text-center text-sm text-muted-foreground">
+                      <p className="py-4 text-center text-sm text-muted-foreground">
                         Nenhum membro nesta equipe.
                       </p>
                     )}
                     {members.map((member) => (
                       <div
                         key={member.id}
-                        className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2.5 text-sm"
+                        className="flex items-center justify-between border-b border-border px-4 py-2.5 text-sm last:border-b-0"
                       >
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="truncate">{member.name}</span>
@@ -588,32 +604,32 @@ export default function CoordEquipesPage() {
                           {member.role === "voluntario" && (
                             <Button
                               variant="ghost"
-                              size="xs"
+                              size="sm"
                               onClick={() =>
                                 handlePromoteToLeader(team.id, member.id)
                               }
                             >
-                              <UserCheck className="size-3" />
+                              <UserCheck className="size-3.5" />
                               Promover
                             </Button>
                           )}
                           {member.role !== "coord" && (
-                            <Button
-                              variant="ghost"
-                              size="xs"
+                            <button
+                              type="button"
                               aria-label="Remover membro"
+                              className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                               onClick={() => handleRemoveMember(member.id)}
                             >
-                              <Trash2 className="size-3 text-destructive" />
-                            </Button>
+                              <Trash2 className="size-3.5" />
+                            </button>
                           )}
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           );
         })}
       </div>

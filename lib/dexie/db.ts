@@ -65,4 +65,8 @@ class ImpactoDB extends Dexie {
   }
 }
 
-export const db = new ImpactoDB();
+// Singleton — only instantiated in the browser; guard prevents SSR evaluation
+export const db =
+  typeof window !== "undefined"
+    ? new ImpactoDB()
+    : (null as unknown as ImpactoDB);

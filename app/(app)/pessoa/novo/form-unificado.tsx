@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CONSENT_TEXTS } from "@/lib/consent/texts";
-import { savePersonLocal } from "@/lib/dexie/repos";
+import { savePersonLocal, saveActivityEventLocal } from "@/lib/dexie/repos";
 import { uuidv7 } from "@/lib/uuid/v7";
 import { registerPerson, checkDuplicatePerson } from "./actions";
 import { compressImage } from "@/lib/image/compress";
@@ -231,6 +231,18 @@ export function FormUnificado({
           photo_url: photoUrl,
           consent_proof_url: consentProofUrl,
         });
+
+        if (activityHint) {
+          await saveActivityEventLocal({
+            client_event_id: uuidv7(),
+            activity_type: activityHint,
+            count: 1,
+            lat: geo.lat ?? undefined,
+            lng: geo.lng ?? undefined,
+            occurred_at: new Date().toISOString(),
+            person_client_event_id: clientEventId,
+          });
+        }
       } catch {
         toast.error("Erro ao salvar localmente");
         return;
@@ -330,7 +342,7 @@ export function FormUnificado({
           <Label htmlFor="needType" className="text-base">
             Tipo de necessidade
           </Label>
-          <Select value={needType} onValueChange={setNeedType}>
+          <Select value={needType} onValueChange={(v) => setNeedType(v ?? "")}>
             <SelectTrigger className="h-12 text-base">
               <SelectValue placeholder="Selecione..." />
             </SelectTrigger>

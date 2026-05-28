@@ -77,7 +77,7 @@ export default async function LiderLayout({
     >
       <div className="flex min-h-screen flex-col">
         <AppHeader />
-        <main className="flex-1 pb-20">{children}</main>
+        <main className="flex-1 overflow-x-hidden pb-20">{children}</main>
         <BottomNav />
       </div>
     </SessionProvider>
