@@ -89,8 +89,8 @@ export function InstallPrompt() {
             </span>
             Toque em{" "}
             <Share size={14} className="inline shrink-0 text-primary" />{" "}
-            <span className="font-medium text-foreground">Compartilhar</span>{" "}
-            no Safari
+            <span className="font-medium text-foreground">Compartilhar</span> no
+            Safari
           </li>
           <li className="flex items-center gap-2">
             <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
