@@ -29,6 +29,10 @@ export default async function AppLayout({
     redirect("/login");
   }
 
+  if (userData.role === "coord") {
+    redirect("/coord");
+  }
+
   let teamData: { id: string; name: string; color: string | null } | null =
     null;
 

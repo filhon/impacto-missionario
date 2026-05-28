@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { uuidv7 } from "@/lib/uuid/v7";
+import { ACTIVITY_TYPES } from "@/types/domain";
 
 export async function checkDuplicatePerson(name: string, phone?: string) {
   const supabase = await createClient();
@@ -80,6 +81,16 @@ export interface RegisterPersonInput {
 }
 
 export async function registerPerson(input: RegisterPersonInput) {
+  // --- Input validation ---
+  if (![0, 1, 2, 3].includes(input.consentLevel)) {
+    return { error: "Nível de consentimento inválido" };
+  }
+
+  if (input.activityHint && !(input.activityHint in ACTIVITY_TYPES)) {
+    return { error: "Tipo de atividade inválido" };
+  }
+  // --- End validation ---
+
   const supabase = await createClient();
 
   const {

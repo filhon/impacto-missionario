@@ -61,7 +61,7 @@ export default function SyncPage() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Sincronização</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Sincronização</h1>
         <Badge variant={isOnline ? "default" : "secondary"} className="gap-1.5">
           {isOnline ? (
             <Wifi className="size-3" />
@@ -120,7 +120,7 @@ export default function SyncPage() {
               onClick={() => setFailedExpanded(!failedExpanded)}
               className="flex w-full items-center justify-between"
             >
-              <CardTitle className="flex items-center gap-2 text-sm">
+              <CardTitle className="flex items-center gap-2 text-base font-semibold">
                 <AlertCircle className="size-4 text-destructive" />
                 Itens com falha ({totalFailed})
               </CardTitle>

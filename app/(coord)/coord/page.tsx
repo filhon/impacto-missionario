@@ -6,14 +6,14 @@ import { createClient } from "@/lib/supabase/client";
 import { ACTIVITY_TYPES, type ActivityType } from "@/types/domain";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { MapPoint } from "@/components/activity-map";
 
 const ActivityMap = dynamic(() => import("@/components/activity-map"), {
   ssr: false,
   loading: () => (
-    <div className="h-[320px] w-full animate-pulse rounded-lg bg-muted" />
+    <div className="h-80 w-full animate-pulse rounded-lg bg-muted" />
   ),
 });
 import {
@@ -90,7 +90,7 @@ export default function CoordDashboard() {
   const [typeFilter, setTypeFilter] = useState(ALL_VALUE);
   const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const { data: eventInfo } = useQuery({
+  const { isPending: eventInfoPending } = useQuery({
     queryKey: ["coord", event?.id, "event-info"],
     queryFn: async () => {
       if (!event?.id) return null;
@@ -104,18 +104,6 @@ export default function CoordDashboard() {
     },
     enabled: !!event?.id,
   });
-
-  useEffect(() => {
-    if (eventInfo?.start_date && !startDate) {
-      setStartDate(eventInfo.start_date);
-    }
-    if (eventInfo?.end_date && !endDate) {
-      setEndDate(eventInfo.end_date);
-    }
-  }, [eventInfo, startDate, endDate]);
-
-  const effectiveStartDate = startDate || eventInfo?.start_date || "";
-  const effectiveEndDate = endDate || eventInfo?.end_date || "";
 
   const { data: teams } = useQuery({
     queryKey: ["coord", event?.id, "teams"],
@@ -137,8 +125,8 @@ export default function CoordDashboard() {
       "coord",
       event?.id,
       "activities",
-      effectiveStartDate,
-      effectiveEndDate,
+      startDate,
+      endDate,
       teamFilter,
       typeFilter,
     ],
@@ -152,11 +140,11 @@ export default function CoordDashboard() {
         )
         .eq("event_id", event.id);
 
-      if (effectiveStartDate) {
-        query = query.gte("occurred_at", `${effectiveStartDate}T00:00:00`);
+      if (startDate) {
+        query = query.gte("occurred_at", `${startDate}T00:00:00`);
       }
-      if (effectiveEndDate) {
-        query = query.lte("occurred_at", `${effectiveEndDate}T23:59:59`);
+      if (endDate) {
+        query = query.lte("occurred_at", `${endDate}T23:59:59`);
       }
       if (teamFilter !== ALL_VALUE) {
         query = query.eq("team_id", teamFilter);
@@ -168,18 +156,11 @@ export default function CoordDashboard() {
       const { data } = await query;
       return (data ?? []) as ActivityRow[];
     },
-    enabled: !!event?.id,
+    enabled: !!event?.id && !eventInfoPending,
   });
 
   const { data: peopleRows } = useQuery({
-    queryKey: [
-      "coord",
-      event?.id,
-      "people",
-      effectiveStartDate,
-      effectiveEndDate,
-      teamFilter,
-    ],
+    queryKey: ["coord", event?.id, "people", startDate, endDate, teamFilter],
     queryFn: async () => {
       if (!event?.id) return [];
       const supabase = createClient();
@@ -188,11 +169,11 @@ export default function CoordDashboard() {
         .select("id, conversion_decision, neighborhood, consent_level, team_id")
         .eq("event_id", event.id);
 
-      if (effectiveStartDate) {
-        query = query.gte("created_at", `${effectiveStartDate}T00:00:00`);
+      if (startDate) {
+        query = query.gte("created_at", `${startDate}T00:00:00`);
       }
-      if (effectiveEndDate) {
-        query = query.lte("created_at", `${effectiveEndDate}T23:59:59`);
+      if (endDate) {
+        query = query.lte("created_at", `${endDate}T23:59:59`);
       }
       if (teamFilter !== ALL_VALUE) {
         query = query.eq("team_id", teamFilter);
@@ -201,7 +182,7 @@ export default function CoordDashboard() {
       const { data } = await query;
       return (data ?? []) as PersonRow[];
     },
-    enabled: !!event?.id,
+    enabled: !!event?.id && !eventInfoPending,
   });
 
   const { data: users } = useQuery({
@@ -227,7 +208,8 @@ export default function CoordDashboard() {
         .from("activity_events")
         .select("user_id, occurred_at")
         .eq("event_id", event.id)
-        .order("occurred_at", { ascending: false });
+        .order("occurred_at", { ascending: false })
+        .limit(2000); // cap to prevent large transfers on big events
 
       if (!data) return new Map();
 
@@ -413,7 +395,7 @@ export default function CoordDashboard() {
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold">Dashboard</h1>
+        <h1 className="text-xl font-semibold tracking-tight">Dashboard</h1>
       </div>
 
       <div className="sticky top-12 z-40 -mx-4 bg-background px-4 py-2 shadow-sm">
@@ -450,7 +432,7 @@ export default function CoordDashboard() {
               </label>
               <input
                 type="date"
-                value={effectiveStartDate}
+                value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
               />
@@ -461,7 +443,7 @@ export default function CoordDashboard() {
               </label>
               <input
                 type="date"
-                value={effectiveEndDate}
+                value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm"
               />
@@ -508,72 +490,53 @@ export default function CoordDashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Card size="sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
-              <Activity className="size-3.5" />
-              Atividades
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold tabular-nums">
-              {kpis.totalActivities}
-            </p>
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
-              <Users className="size-3.5" />
-              Pessoas
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold tabular-nums">
-              {kpis.totalPeople}
-            </p>
-          </CardContent>
-        </Card>
-        <Card
-          size="sm"
-          className="border-primary/20 bg-primary/5 col-span-2 md:col-span-1"
-        >
-          <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-              <Heart className="size-3.5" />
-              Conversões
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold tabular-nums text-primary">
-              {kpis.totalConversions}
-            </p>
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-1.5 text-xs font-normal text-muted-foreground">
-              <MapPin className="size-3.5" />
-              Bairros
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold tabular-nums">
-              {kpis.uniqueNeighborhoods}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Activity className="size-3.5" />
+            <span>Atividades</span>
+          </div>
+          <p className="mt-2 text-2xl font-bold tabular-nums leading-none">
+            {kpis.totalActivities}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Users className="size-3.5" />
+            <span>Pessoas</span>
+          </div>
+          <p className="mt-2 text-2xl font-bold tabular-nums leading-none">
+            {kpis.totalPeople}
+          </p>
+        </div>
+        <div className="col-span-2 rounded-2xl border border-primary/25 bg-primary/8 p-4 md:col-span-1">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
+            <Heart className="size-3.5" />
+            <span>Conversões</span>
+          </div>
+          <p className="mt-2 text-[2rem] font-bold tabular-nums leading-none text-primary">
+            {kpis.totalConversions}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <MapPin className="size-3.5" />
+            <span>Bairros</span>
+          </div>
+          <p className="mt-2 text-2xl font-bold tabular-nums leading-none">
+            {kpis.uniqueNeighborhoods}
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-base font-semibold">
               Total por equipe
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {barChartData.length === 0 ? (
+            {barChartData.every((d) => d.total === 0) ? (
               <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
                 Nenhum dado disponível
               </div>
@@ -605,12 +568,15 @@ export default function CoordDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-2xl">
           <CardHeader>
-            <CardTitle className="text-sm font-medium">Total por dia</CardTitle>
+            <CardTitle className="text-base font-semibold">
+              Total por dia
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            {lineChartData.length === 0 ? (
+            {lineChartData.every((d) => d.total === 0) ||
+            lineChartData.length === 0 ? (
               <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">
                 Nenhum dado disponível
               </div>
@@ -650,15 +616,15 @@ export default function CoordDashboard() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="rounded-2xl">
         <CardHeader>
-          <CardTitle className="text-sm font-medium">
+          <CardTitle className="text-base font-semibold">
             Atividades no mapa
           </CardTitle>
         </CardHeader>
         <CardContent className="p-3">
           {mapPoints.length === 0 ? (
-            <div className="flex h-[320px] items-center justify-center rounded-lg bg-muted text-sm text-muted-foreground">
+            <div className="flex h-80 items-center justify-center rounded-lg bg-muted text-sm text-muted-foreground">
               Nenhuma atividade com localização registrada
             </div>
           ) : (
@@ -667,11 +633,11 @@ export default function CoordDashboard() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-2xl">
         <CardHeader>
-          <CardTitle className="text-sm font-medium">Equipes</CardTitle>
+          <CardTitle className="text-base font-semibold">Equipes</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
+        <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

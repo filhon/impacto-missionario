@@ -2,6 +2,34 @@ import { createClient } from "@/lib/supabase/server";
 import { type NextRequest } from "next/server";
 import type { LocalActivityEvent, LocalPerson } from "@/lib/dexie/db";
 
+// ---------------------------------------------------------------------------
+// Allowed values & limits
+// ---------------------------------------------------------------------------
+const ALLOWED_ACTIVITY_TYPES = new Set([
+  "biblia",
+  "joao",
+  "folheto",
+  "visita",
+  "oracao",
+  "conversao",
+  "medico",
+  "radio",
+]);
+
+const MAX_COUNT = 100;
+const MAX_BATCH_SIZE = 50;
+// Timestamps more than 30 days old or 5 minutes in the future are rejected.
+const MAX_PAST_MS = 30 * 24 * 60 * 60 * 1000;
+const MAX_FUTURE_MS = 5 * 60 * 1000;
+
+function isValidOccurredAt(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  const ts = Date.parse(value);
+  if (isNaN(ts)) return false;
+  const now = Date.now();
+  return ts >= now - MAX_PAST_MS && ts <= now + MAX_FUTURE_MS;
+}
+
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
 
@@ -32,6 +60,11 @@ export async function POST(req: NextRequest) {
   const people = (
     Array.isArray(body.people) ? body.people : []
   ) as LocalPerson[];
+
+  // Reject oversized batches to prevent DoS.
+  if (events.length > MAX_BATCH_SIZE || people.length > MAX_BATCH_SIZE) {
+    return new Response("Batch too large", { status: 400 });
+  }
 
   const accepted: string[] = [];
   const duplicates: string[] = [];
@@ -112,6 +145,33 @@ export async function POST(req: NextRequest) {
   }
 
   for (const ev of events) {
+    // --- Input validation ---
+    if (!ALLOWED_ACTIVITY_TYPES.has(ev.activity_type)) {
+      errors.push({
+        client_event_id: ev.client_event_id,
+        message: "Tipo de atividade inválido",
+      });
+      continue;
+    }
+
+    const count = Math.floor(ev.count ?? 1);
+    if (count < 1 || count > MAX_COUNT) {
+      errors.push({
+        client_event_id: ev.client_event_id,
+        message: "Contagem fora do intervalo permitido (1–100)",
+      });
+      continue;
+    }
+
+    if (!isValidOccurredAt(ev.occurred_at)) {
+      errors.push({
+        client_event_id: ev.client_event_id,
+        message: "Data/hora inválida",
+      });
+      continue;
+    }
+    // --- End validation ---
+
     try {
       const personId = ev.person_client_event_id
         ? (personIdMap.get(ev.person_client_event_id) ?? null)
@@ -123,7 +183,7 @@ export async function POST(req: NextRequest) {
         team_id: userData.team_id,
         user_id: userData.id,
         activity_type: ev.activity_type,
-        count: ev.count ?? 1,
+        count,
         lat: ev.lat ?? null,
         lng: ev.lng ?? null,
         occurred_at: ev.occurred_at,

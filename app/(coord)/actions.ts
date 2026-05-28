@@ -3,14 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
-export async function createTeam(formData: FormData) {
-  const supabase = await createClient();
-
+// ---------------------------------------------------------------------------
+// Helper: fetch the authenticated coordinator's record.
+// Returns null when not authenticated or not a coordinator.
+// ---------------------------------------------------------------------------
+async function getCoordData(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  if (!user) return { error: "Não autenticado" };
+  if (!user) return null;
 
   const { data: userData } = await supabase
     .from("users")
@@ -18,9 +21,14 @@ export async function createTeam(formData: FormData) {
     .eq("id", user.id)
     .single();
 
-  if (!userData || userData.role !== "coord") {
-    return { error: "Não autorizado" };
-  }
+  if (!userData || userData.role !== "coord") return null;
+  return userData;
+}
+
+export async function createTeam(formData: FormData) {
+  const supabase = await createClient();
+  const coordData = await getCoordData(supabase);
+  if (!coordData) return { error: "Não autorizado" };
 
   const name = formData.get("name") as string;
   const code = formData.get("code") as string;
@@ -29,12 +37,12 @@ export async function createTeam(formData: FormData) {
     return { error: "Nome deve ter pelo menos 2 caracteres" };
   }
 
-  if (!code || code.length !== 4) {
-    return { error: "Código deve ter 4 dígitos" };
+  if (!code || !/^\d{4}$/.test(code)) {
+    return { error: "Código deve ter exatamente 4 dígitos numéricos" };
   }
 
   const { error } = await supabase.from("teams").insert({
-    event_id: userData.event_id,
+    event_id: coordData.event_id,
     name: name.trim(),
     code_4dig: code,
     color: "#0ea5e9",
@@ -53,29 +61,15 @@ export async function createTeam(formData: FormData) {
 
 export async function generateUniqueCode() {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "Não autenticado" };
-
-  const { data: userData } = await supabase
-    .from("users")
-    .select("role, event_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!userData || userData.role !== "coord") {
-    return { error: "Não autorizado" };
-  }
+  const coordData = await getCoordData(supabase);
+  if (!coordData) return { error: "Não autorizado" };
 
   for (let attempt = 0; attempt < 20; attempt++) {
     const code = String(Math.floor(1000 + Math.random() * 9000));
     const { data: existing } = await supabase
       .from("teams")
       .select("id")
-      .eq("event_id", userData.event_id)
+      .eq("event_id", coordData.event_id)
       .eq("code_4dig", code)
       .maybeSingle();
 
@@ -89,26 +83,22 @@ export async function generateUniqueCode() {
 
 export async function updateTeamName(teamId: string, name: string) {
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "Não autenticado" };
-
-  const { data: userData } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!userData || userData.role !== "coord") {
-    return { error: "Não autorizado" };
-  }
+  const coordData = await getCoordData(supabase);
+  if (!coordData) return { error: "Não autorizado" };
 
   if (!name || name.trim().length < 2) {
     return { error: "Nome deve ter pelo menos 2 caracteres" };
   }
+
+  // Verify the team belongs to the coordinator's own event.
+  const { data: team } = await supabase
+    .from("teams")
+    .select("id")
+    .eq("id", teamId)
+    .eq("event_id", coordData.event_id)
+    .maybeSingle();
+
+  if (!team) return { error: "Equipe não encontrada" };
 
   const { error } = await supabase
     .from("teams")
@@ -123,30 +113,30 @@ export async function updateTeamName(teamId: string, name: string) {
 
 export async function setTeamLeader(teamId: string, leaderId: string) {
   const supabase = await createClient();
+  const coordData = await getCoordData(supabase);
+  if (!coordData) return { error: "Não autorizado" };
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "Não autenticado" };
-
-  const { data: userData } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!userData || userData.role !== "coord") {
-    return { error: "Não autorizado" };
-  }
-
-  const team = await supabase
+  // Verify team belongs to coordinator's event.
+  const { data: team } = await supabase
     .from("teams")
-    .select("leader_id")
+    .select("id, leader_id")
     .eq("id", teamId)
-    .single();
+    .eq("event_id", coordData.event_id)
+    .maybeSingle();
 
-  const oldLeaderId = team.data?.leader_id;
+  if (!team) return { error: "Equipe não encontrada" };
+
+  // Verify the candidate leader belongs to the coordinator's event.
+  const { data: leaderUser } = await supabase
+    .from("users")
+    .select("id")
+    .eq("id", leaderId)
+    .eq("event_id", coordData.event_id)
+    .maybeSingle();
+
+  if (!leaderUser) return { error: "Usuário não encontrado neste evento" };
+
+  const oldLeaderId = team.leader_id;
 
   const { error: setLeaderErr } = await supabase
     .from("teams")
@@ -155,6 +145,7 @@ export async function setTeamLeader(teamId: string, leaderId: string) {
 
   if (setLeaderErr) return { error: "Erro ao definir líder" };
 
+  // Demote previous leader (if different from new one).
   if (oldLeaderId && oldLeaderId !== leaderId) {
     await supabase
       .from("users")
@@ -175,29 +166,25 @@ export async function setTeamLeader(teamId: string, leaderId: string) {
 
 export async function resetTeamCode(teamId: string) {
   const supabase = await createClient();
+  const coordData = await getCoordData(supabase);
+  if (!coordData) return { error: "Não autorizado" };
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Verify team belongs to coordinator's event.
+  const { data: team } = await supabase
+    .from("teams")
+    .select("id")
+    .eq("id", teamId)
+    .eq("event_id", coordData.event_id)
+    .maybeSingle();
 
-  if (!user) return { error: "Não autenticado" };
-
-  const { data: userData } = await supabase
-    .from("users")
-    .select("role, event_id")
-    .eq("id", user.id)
-    .single();
-
-  if (!userData || userData.role !== "coord") {
-    return { error: "Não autorizado" };
-  }
+  if (!team) return { error: "Equipe não encontrada" };
 
   for (let attempt = 0; attempt < 20; attempt++) {
     const code = String(Math.floor(1000 + Math.random() * 9000));
     const { data: existing } = await supabase
       .from("teams")
       .select("id")
-      .eq("event_id", userData.event_id)
+      .eq("event_id", coordData.event_id)
       .eq("code_4dig", code)
       .maybeSingle();
 
@@ -219,22 +206,18 @@ export async function resetTeamCode(teamId: string) {
 
 export async function removeTeamMember(userId: string) {
   const supabase = await createClient();
+  const coordData = await getCoordData(supabase);
+  if (!coordData) return { error: "Não autorizado" };
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return { error: "Não autenticado" };
-
-  const { data: userData } = await supabase
+  // Verify the target user belongs to the coordinator's event.
+  const { data: targetUser } = await supabase
     .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+    .select("id")
+    .eq("id", userId)
+    .eq("event_id", coordData.event_id)
+    .maybeSingle();
 
-  if (!userData || userData.role !== "coord") {
-    return { error: "Não autorizado" };
-  }
+  if (!targetUser) return { error: "Usuário não encontrado neste evento" };
 
   const { error } = await supabase
     .from("users")

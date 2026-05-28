@@ -8,6 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CONSENT_TEXTS } from "@/lib/consent/texts";
 import { savePersonLocal } from "@/lib/dexie/repos";
 import { uuidv7 } from "@/lib/uuid/v7";
@@ -102,10 +109,9 @@ export function FormUnificado({
             await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
           continue;
         }
-        const { data } = await supabase.storage
-          .from("people-photos")
-          .createSignedUrl(path, 60 * 60 * 24 * 365);
-        return data?.signedUrl ?? null;
+        // Store the storage path (not a signed URL) so the server can
+        // generate fresh signed URLs when displaying the photo.
+        return path;
       } catch {
         if (attempt < 2)
           await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
@@ -324,20 +330,18 @@ export function FormUnificado({
           <Label htmlFor="needType" className="text-base">
             Tipo de necessidade
           </Label>
-          <select
-            id="needType"
-            name="needType"
-            value={needType}
-            onChange={(e) => setNeedType(e.target.value)}
-            className="h-12 w-full rounded-lg border border-input bg-transparent px-3 text-base transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
-          >
-            <option value="">Selecione...</option>
-            {NEED_TYPES.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
+          <Select value={needType} onValueChange={setNeedType}>
+            <SelectTrigger className="h-12 text-base">
+              <SelectValue placeholder="Selecione..." />
+            </SelectTrigger>
+            <SelectContent>
+              {NEED_TYPES.map(({ value, label }) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -442,12 +446,7 @@ export function FormUnificado({
             {consentChecked && (
               <button
                 type="button"
-                onClick={() => {
-                  setShowFullData((v) => {
-                    if (!v) setConsentChecked(false);
-                    return !v;
-                  });
-                }}
+                onClick={() => setShowFullData((v) => !v)}
                 className="flex items-center justify-between rounded-xl border border-border bg-card p-4 text-left transition-colors hover:bg-accent"
               >
                 <div>

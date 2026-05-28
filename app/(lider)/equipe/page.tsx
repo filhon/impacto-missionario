@@ -194,12 +194,14 @@ export default function EquipePage() {
       <div className="border-b border-border px-4 pb-4 pt-4">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="truncate text-xl font-bold leading-tight">{team.name}</h1>
+            <h1 className="truncate text-xl font-bold leading-tight">
+              {team.name}
+            </h1>
             <button
               type="button"
               onClick={handleCopyCode}
               aria-label="Copiar código da equipe"
-              className="mt-1.5 flex min-h-[36px] items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="mt-1.5 flex min-h-9 items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <code className="font-mono text-xs tracking-widest">
                 {team.code_4dig ?? "—"}
@@ -207,57 +209,68 @@ export default function EquipePage() {
               <Copy className="size-3.5" />
             </button>
           </div>
-          <div className="flex shrink-0 gap-6">
-            <div className="text-right">
+          <div className="flex shrink-0 gap-4">
+            <div className="flex flex-col items-end gap-0.5 rounded-xl bg-muted/50 px-3 py-2">
               {isLoadingTotals ? (
-                <Skeleton className="ml-auto mb-1 h-7 w-12" />
+                <Skeleton className="mb-0.5 h-6 w-10" />
               ) : (
-                <p className="text-2xl font-bold tabular-nums leading-none">
+                <p className="text-xl font-bold tabular-nums leading-none">
                   {totalAtividades}
                 </p>
               )}
-              <p className="mt-1 text-xs text-muted-foreground">atividades</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                atividades
+              </p>
             </div>
-            <div className="text-right">
+            <div className="flex flex-col items-end gap-0.5 rounded-xl bg-muted/50 px-3 py-2">
               {peopleCount === undefined ? (
-                <Skeleton className="ml-auto mb-1 h-7 w-8" />
+                <Skeleton className="mb-0.5 h-6 w-8" />
               ) : (
-                <p className="text-2xl font-bold tabular-nums leading-none">
+                <p className="text-xl font-bold tabular-nums leading-none">
                   {peopleCount}
                 </p>
               )}
-              <p className="mt-1 text-xs text-muted-foreground">pessoas</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                pessoas
+              </p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Activity breakdown chips */}
-      <div className="overflow-x-auto border-b border-border py-3">
-        <div className="flex w-max gap-2 px-4">
-          {entries.map(([type, config]) => {
-            const Icon = ICONS[type];
-            const count = totalsByType[type] ?? 0;
-            return (
-              <div
-                key={type}
-                className="flex min-w-[60px] shrink-0 flex-col items-center gap-1.5 rounded-xl border border-border bg-muted/40 px-3 py-2.5"
-              >
-                <Icon className="size-5 shrink-0" style={{ color: config.color }} />
-                {isLoadingTotals ? (
-                  <Skeleton className="h-5 w-7" />
-                ) : (
-                  <span className="text-base font-bold tabular-nums leading-none">
-                    {count}
+      <div className="relative border-b border-border">
+        <div className="scrollbar-none overflow-x-auto py-3">
+          <div className="flex w-max gap-2 px-4">
+            {entries.map(([type, config]) => {
+              const Icon = ICONS[type];
+              const count = totalsByType[type] ?? 0;
+              return (
+                <div
+                  key={type}
+                  className="flex min-w-17 shrink-0 flex-col items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-2.5 shadow-sm"
+                >
+                  <Icon
+                    className="size-5 shrink-0"
+                    style={{ color: config.color }}
+                  />
+                  {isLoadingTotals ? (
+                    <Skeleton className="h-5 w-7" />
+                  ) : (
+                    <span className="text-base font-bold tabular-nums leading-none">
+                      {count}
+                    </span>
+                  )}
+                  <span className="whitespace-nowrap text-center text-[10px] leading-tight text-muted-foreground">
+                    {config.label}
                   </span>
-                )}
-                <span className="whitespace-nowrap text-center text-[10px] leading-tight text-muted-foreground">
-                  {config.label}
-                </span>
-              </div>
-            );
-          })}
+                </div>
+              );
+            })}
+          </div>
         </div>
+        {/* Fade hint right edge */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-linear-to-l from-background to-transparent" />
       </div>
 
       {/* Tabs */}

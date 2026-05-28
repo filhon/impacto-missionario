@@ -2,11 +2,48 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { uuidv7 } from "@/lib/uuid/v7";
 
+// ---------------------------------------------------------------------------
+// In-process rate limiter: 5 login attempts per IP per 10 minutes.
+// Resets on process restart (acceptable for this deployment scale).
+// ---------------------------------------------------------------------------
+const RATE_LIMIT_MAX = 5;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+
+const ipAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = ipAttempts.get(ip);
+
+  if (!entry || entry.resetAt <= now) {
+    ipAttempts.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+
+  entry.count += 1;
+  return true;
+}
+
 export async function loginWithCode(formData: FormData) {
+  const headersList = await headers();
+  const ip =
+    headersList.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    headersList.get("x-real-ip") ??
+    "unknown";
+
+  if (!checkRateLimit(ip)) {
+    return {
+      error: "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
+    };
+  }
+
   const code = formData.get("code") as string;
   const name = formData.get("name") as string;
   const phone = (formData.get("phone") as string) || undefined;

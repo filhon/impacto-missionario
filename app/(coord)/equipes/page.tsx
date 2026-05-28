@@ -130,6 +130,50 @@ export default function CoordEquipesPage() {
     enabled: !!event?.id,
   });
 
+  const { data: activityTotals } = useQuery({
+    queryKey: ["coord", event?.id, "activity-totals-per-team"],
+    queryFn: async () => {
+      if (!event?.id) return new Map<string, number>();
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("activity_events")
+        .select("team_id, count")
+        .eq("event_id", event.id);
+
+      if (!data) return new Map();
+      const map = new Map<string, number>();
+      for (const row of data) {
+        if (row.team_id) {
+          map.set(row.team_id, (map.get(row.team_id) ?? 0) + row.count);
+        }
+      }
+      return map;
+    },
+    enabled: !!event?.id,
+  });
+
+  const { data: peopleTotals } = useQuery({
+    queryKey: ["coord", event?.id, "people-totals-per-team"],
+    queryFn: async () => {
+      if (!event?.id) return new Map<string, number>();
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("people_reached")
+        .select("team_id")
+        .eq("event_id", event.id);
+
+      if (!data) return new Map();
+      const map = new Map<string, number>();
+      for (const row of data) {
+        if (row.team_id) {
+          map.set(row.team_id, (map.get(row.team_id) ?? 0) + 1);
+        }
+      }
+      return map;
+    },
+    enabled: !!event?.id,
+  });
+
   const handleGenerateCode = async () => {
     setGeneratingCode(true);
     const result = await generateUniqueCode();
@@ -230,7 +274,7 @@ export default function CoordEquipesPage() {
     (users ?? []).filter((u) => u.team_id === teamId);
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-6 p-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Equipes</h1>
         <Dialog open={newTeamOpen} onOpenChange={setNewTeamOpen}>
@@ -300,104 +344,141 @@ export default function CoordEquipesPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {teams !== undefined && teams.length === 0 && (
+          <div className="col-span-full py-12 text-center text-sm text-muted-foreground">
+            Nenhuma equipe criada ainda.
+            <br />
+            Clique em &quot;Nova equipe&quot; para começar.
+          </div>
+        )}
         {teams?.map((team) => {
           const members = teamUsers(team.id);
           const isExpanded = expandedTeam === team.id;
           const currentLeader = users?.find((u) => u.id === team.leader_id);
+          const memberCount = memberCounts?.get(team.id) ?? 0;
+          const activityCount = activityTotals?.get(team.id) ?? 0;
+          const peopleCount = peopleTotals?.get(team.id) ?? 0;
 
           return (
-            <Card key={team.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="size-3 rounded-full shrink-0"
-                      style={{ backgroundColor: team.color ?? "#0ea5e9" }}
-                    />
-                    <CardTitle className="text-sm">{team.name}</CardTitle>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label="Editar nome da equipe"
-                      onClick={() => {
-                        setEditNameOpen(team.id);
-                        setEditNameValue(team.name);
-                      }}
-                    >
-                      <Pencil className="size-3" />
-                    </Button>
-                    <Dialog
-                      open={editNameOpen === team.id}
-                      onOpenChange={(open) => {
-                        if (!open) setEditNameOpen(null);
-                      }}
-                    >
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Editar nome da equipe</DialogTitle>
-                        </DialogHeader>
-                        <Input
-                          value={editNameValue}
-                          onChange={(e) => setEditNameValue(e.target.value)}
-                        />
-                        <div className="flex gap-2 justify-end">
-                          <DialogClose
-                            render={<Button variant="outline" size="sm" />}
-                          >
-                            Cancelar
-                          </DialogClose>
-                          <Button
-                            size="sm"
-                            onClick={() => handleEditName(team.id)}
-                          >
-                            Salvar
-                          </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <code className="rounded bg-muted px-2 py-0.5 font-mono text-lg tracking-widest">
-                      {team.code_4dig}
-                    </code>
-                    <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Users className="size-3.5" />
-                      {memberCounts?.get(team.id) ?? 0}
+            <Card key={team.id} className="overflow-hidden rounded-2xl">
+              {/* Team color accent strip — thicker for visual anchor */}
+              <div
+                className="h-1.5"
+                style={{ backgroundColor: team.color ?? "#0ea5e9" }}
+              />
+
+              <CardHeader className="px-4 pb-2 pt-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-base font-semibold leading-snug">
+                      {team.name}
+                    </CardTitle>
+                    <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                      <Users className="size-3" />
+                      {memberCount} {memberCount === 1 ? "membro" : "membros"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `O código "${team.code_4dig}" vai parar de funcionar. Gerar um novo?`,
-                          )
-                        ) {
-                          handleResetCode(team.id);
-                        }
-                      }}
-                    >
-                      <RefreshCw className="size-3" />
-                      Resetar código
-                    </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label="Editar nome da equipe"
+                    className="mt-0.5 shrink-0"
+                    onClick={() => {
+                      setEditNameOpen(team.id);
+                      setEditNameValue(team.name);
+                    }}
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  <Dialog
+                    open={editNameOpen === team.id}
+                    onOpenChange={(open) => {
+                      if (!open) setEditNameOpen(null);
+                    }}
+                  >
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Editar nome da equipe</DialogTitle>
+                      </DialogHeader>
+                      <Input
+                        value={editNameValue}
+                        onChange={(e) => setEditNameValue(e.target.value)}
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <DialogClose
+                          render={<Button variant="outline" size="sm" />}
+                        >
+                          Cancelar
+                        </DialogClose>
+                        <Button
+                          size="sm"
+                          onClick={() => handleEditName(team.id)}
+                        >
+                          Salvar
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardHeader>
+
+              <CardContent className="flex flex-col gap-4 px-4 pb-4 pt-1">
+                {/* Code + reset */}
+                <div className="flex items-center justify-between">
+                  <code className="rounded-md bg-muted px-3 py-2 font-mono text-2xl tracking-[0.3em] tabular-nums">
+                    {team.code_4dig}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => {
+                      if (
+                        window.confirm(
+                          `O código "${team.code_4dig}" vai parar de funcionar. Gerar um novo?`,
+                        )
+                      ) {
+                        handleResetCode(team.id);
+                      }
+                    }}
+                  >
+                    <RefreshCw className="size-3.5" />
+                    Resetar
+                  </Button>
+                </div>
+
+                {/* Activity + people totals */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl bg-muted/60 px-3 py-2 text-center">
+                    <p className="text-lg font-bold tabular-nums leading-none">
+                      {activityCount}
+                    </p>
+                    <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      atividades
+                    </p>
+                  </div>
+                  <div className="rounded-xl bg-muted/60 px-3 py-2 text-center">
+                    <p className="text-lg font-bold tabular-nums leading-none">
+                      {peopleCount}
+                    </p>
+                    <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      pessoas
+                    </p>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    Líder:{" "}
-                    <span className="font-medium text-foreground">
-                      {currentLeader?.name ?? "—"}
+                {/* Leader row */}
+                <div className="flex items-center justify-between gap-2 rounded-md bg-muted/40 px-3 py-2.5">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <ShieldCheck className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="truncate text-sm">
+                      {currentLeader?.name ?? (
+                        <span className="italic text-muted-foreground">
+                          Sem líder
+                        </span>
+                      )}
                     </span>
-                  </span>
+                  </div>
                   <Dialog
                     open={setLeaderOpen === team.id}
                     onOpenChange={(open) => {
@@ -413,7 +494,7 @@ export default function CoordEquipesPage() {
                       render={
                         <Button variant="ghost" size="xs">
                           <UserCheck className="size-3" />
-                          Definir líder
+                          Definir
                         </Button>
                       }
                     />
@@ -461,47 +542,49 @@ export default function CoordEquipesPage() {
                   </Dialog>
                 </div>
 
+                {/* Member toggle */}
                 <button
                   type="button"
                   onClick={() => setExpandedTeam(isExpanded ? null : team.id)}
-                  className="flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  className="-mx-1 flex items-center gap-1.5 rounded px-1 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {isExpanded ? (
                     <ChevronUp className="size-3.5" />
                   ) : (
                     <ChevronDown className="size-3.5" />
                   )}
-                  Membros ({members.length})
+                  Ver membros ({members.length})
                 </button>
 
+                {/* Expanded member list */}
                 {isExpanded && (
-                  <div className="flex flex-col gap-1">
+                  <div className="flex flex-col gap-1.5 pt-1">
                     {members.length === 0 && (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="py-3 text-center text-sm text-muted-foreground">
                         Nenhum membro nesta equipe.
                       </p>
                     )}
                     {members.map((member) => (
                       <div
                         key={member.id}
-                        className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2 text-sm"
+                        className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-2.5 text-sm"
                       >
-                        <div className="flex items-center gap-2">
-                          <span>{member.name}</span>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="truncate">{member.name}</span>
                           {member.role === "lider" && (
-                            <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-100 px-1.5 py-0.5 text-[10px] font-medium text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
+                            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-yellow-100 px-1.5 py-0.5 text-[10px] font-medium text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
                               <ShieldCheck className="size-2.5" />
                               Líder
                             </span>
                           )}
                           {member.role === "coord" && (
-                            <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-purple-100 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 dark:bg-purple-900 dark:text-purple-300">
                               <Shield className="size-2.5" />
                               Coord
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="flex shrink-0 items-center gap-1">
                           {member.role === "voluntario" && (
                             <Button
                               variant="ghost"
@@ -511,7 +594,7 @@ export default function CoordEquipesPage() {
                               }
                             >
                               <UserCheck className="size-3" />
-                              Promover a líder
+                              Promover
                             </Button>
                           )}
                           {member.role !== "coord" && (
