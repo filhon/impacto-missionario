@@ -1,4 +1,4 @@
-const CACHE = "impacto-v1";
+const CACHE = "impacto-v3";
 const SHELL = [
   "/",
   "/login",

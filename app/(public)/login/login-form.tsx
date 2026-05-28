@@ -8,6 +8,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -22,6 +28,7 @@ function SubmitButton() {
 export function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [code, setCode] = useState("");
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -52,18 +59,35 @@ export function LoginForm() {
         <CardContent className="pb-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="code">Código da equipe</Label>
-              <Input
-                id="code"
+              <Label>Código da equipe</Label>
+              <InputOTP
                 name="code"
-                inputMode="numeric"
                 maxLength={4}
-                pattern="[0-9]{4}"
-                className="text-center text-3xl tracking-widest"
+                pattern={REGEXP_ONLY_DIGITS}
+                value={code}
+                onChange={setCode}
                 autoFocus
-                required
-                placeholder=""
-              />
+                containerClassName="w-full"
+              >
+                <InputOTPGroup className="w-full">
+                  <InputOTPSlot
+                    index={0}
+                    className="h-14 flex-1 text-2xl font-bold"
+                  />
+                  <InputOTPSlot
+                    index={1}
+                    className="h-14 flex-1 text-2xl font-bold"
+                  />
+                  <InputOTPSlot
+                    index={2}
+                    className="h-14 flex-1 text-2xl font-bold"
+                  />
+                  <InputOTPSlot
+                    index={3}
+                    className="h-14 flex-1 text-2xl font-bold"
+                  />
+                </InputOTPGroup>
+              </InputOTP>
             </div>
 
             <div className="space-y-2">

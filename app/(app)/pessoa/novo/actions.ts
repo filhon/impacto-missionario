@@ -63,6 +63,8 @@ export async function checkDuplicatePerson(name: string, phone?: string) {
 export interface RegisterPersonInput {
   consentLevel: number;
   activityHint?: string;
+  lat?: number;
+  lng?: number;
   neighborhood?: string;
   city?: string;
   needType?: string;
@@ -150,6 +152,8 @@ export async function registerPerson(input: RegisterPersonInput) {
         user_id: userData.id,
         activity_type: input.activityHint,
         count: 1,
+        lat: input.lat ?? null,
+        lng: input.lng ?? null,
         occurred_at: now,
         person_id: person.id,
       });

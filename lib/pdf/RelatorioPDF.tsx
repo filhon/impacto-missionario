@@ -1,5 +1,3 @@
-"use client";
-
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { ACTIVITY_TYPES } from "@/types/domain";
 

@@ -7,7 +7,18 @@ export default async function LoginPage() {
   const { data } = await supabase.auth.getUser();
 
   if (data?.user) {
-    redirect("/");
+    const { data: userData } = await supabase
+      .from("users")
+      .select("id")
+      .eq("id", data.user.id)
+      .single();
+
+    if (userData) {
+      redirect("/");
+    }
+
+    // Sessão órfã: autenticado mas sem perfil — faz logout e exibe login
+    await supabase.auth.signOut();
   }
 
   return <LoginForm />;

@@ -20,6 +20,7 @@ import {
   Radio,
   Copy,
   MapPin,
+  ChevronRight,
 } from "lucide-react";
 import {
   Table,
@@ -185,86 +186,114 @@ export default function EquipePage() {
     (typeof ACTIVITY_TYPES)[ActivityType],
   ][];
 
+  const isLoadingTotals = totalsRaw === undefined;
+
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold">{team.name}</h1>
-          <button
-            type="button"
-            onClick={handleCopyCode}
-            aria-label="Copiar código da equipe"
-            className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs tracking-wider">
-              {team.code_4dig ?? "—"}
-            </code>
-            <Copy className="size-3" />
-          </button>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="text-right">
-            <p className="text-2xl font-bold tabular-nums">{totalAtividades}</p>
-            <p className="text-xs text-muted-foreground">atividades</p>
-          </div>
-          <div className="text-right">
-            <p className="text-2xl font-bold tabular-nums">{peopleCount}</p>
-            <p className="text-xs text-muted-foreground">pessoas</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
-        {entries.map(([type, config]) => {
-          const Icon = ICONS[type];
-          const count = totalsByType[type] ?? 0;
-          return (
-            <div
-              key={type}
-              className="flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-3 py-2"
+    <div className="flex flex-col pb-6">
+      {/* Header */}
+      <div className="border-b border-border px-4 pb-4 pt-4">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-bold leading-tight">{team.name}</h1>
+            <button
+              type="button"
+              onClick={handleCopyCode}
+              aria-label="Copiar código da equipe"
+              className="mt-1.5 flex min-h-[36px] items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              <Icon
-                className="size-4 shrink-0"
-                style={{ color: config.color }}
-              />
-              <span className="text-sm font-bold tabular-nums">{count}</span>
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {config.label}
-              </span>
+              <code className="font-mono text-xs tracking-widest">
+                {team.code_4dig ?? "—"}
+              </code>
+              <Copy className="size-3.5" />
+            </button>
+          </div>
+          <div className="flex shrink-0 gap-6">
+            <div className="text-right">
+              {isLoadingTotals ? (
+                <Skeleton className="ml-auto mb-1 h-7 w-12" />
+              ) : (
+                <p className="text-2xl font-bold tabular-nums leading-none">
+                  {totalAtividades}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">atividades</p>
             </div>
-          );
-        })}
+            <div className="text-right">
+              {peopleCount === undefined ? (
+                <Skeleton className="ml-auto mb-1 h-7 w-8" />
+              ) : (
+                <p className="text-2xl font-bold tabular-nums leading-none">
+                  {peopleCount}
+                </p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">pessoas</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <Tabs defaultValue="atividades">
-        <TabsList variant="line">
-          <TabsTrigger value="atividades">Atividades recentes</TabsTrigger>
-          <TabsTrigger value="pessoas">Pessoas registradas</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="atividades" className="pt-2">
-          <div className="relative w-full overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Voluntário</TableHead>
-                  <TableHead>Atividade</TableHead>
-                  <TableHead>Qtd</TableHead>
-                  <TableHead>Data/Hora</TableHead>
-                  <TableHead>GPS</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activityRows?.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center text-muted-foreground"
-                    >
-                      Nenhuma atividade registrada.
-                    </TableCell>
-                  </TableRow>
+      {/* Activity breakdown chips */}
+      <div className="overflow-x-auto border-b border-border py-3">
+        <div className="flex w-max gap-2 px-4">
+          {entries.map(([type, config]) => {
+            const Icon = ICONS[type];
+            const count = totalsByType[type] ?? 0;
+            return (
+              <div
+                key={type}
+                className="flex min-w-[60px] shrink-0 flex-col items-center gap-1.5 rounded-xl border border-border bg-muted/40 px-3 py-2.5"
+              >
+                <Icon className="size-5 shrink-0" style={{ color: config.color }} />
+                {isLoadingTotals ? (
+                  <Skeleton className="h-5 w-7" />
+                ) : (
+                  <span className="text-base font-bold tabular-nums leading-none">
+                    {count}
+                  </span>
                 )}
+                <span className="whitespace-nowrap text-center text-[10px] leading-tight text-muted-foreground">
+                  {config.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="px-4 pt-3">
+        <Tabs defaultValue="atividades">
+          <TabsList variant="line">
+            <TabsTrigger value="atividades">Atividades recentes</TabsTrigger>
+            <TabsTrigger value="pessoas">Pessoas registradas</TabsTrigger>
+          </TabsList>
+
+          {/* Activities tab */}
+          <TabsContent value="atividades" className="pt-2">
+            {/* Mobile card list */}
+            <div className="sm:hidden">
+              {!activityRows && (
+                <div className="divide-y divide-border">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 py-3">
+                      <Skeleton className="size-9 shrink-0 rounded-lg" />
+                      <div className="flex-1 space-y-1.5">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-3 w-36" />
+                      </div>
+                      <Skeleton className="h-6 w-8" />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {activityRows?.length === 0 && (
+                <div className="py-10 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma atividade registrada.
+                  </p>
+                </div>
+              )}
+              <div className="divide-y divide-border">
                 {activityRows?.map((row) => {
                   const activityConfig =
                     ACTIVITY_TYPES[row.activity_type as ActivityType];
@@ -272,121 +301,304 @@ export default function EquipePage() {
                     ? ICONS[row.activity_type as ActivityType]
                     : null;
                   return (
-                    <TableRow key={row.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {row.volunteer?.name ?? "—"}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        <span className="flex items-center gap-1.5">
-                          {Icon && (
-                            <Icon
-                              className="size-3.5"
-                              style={{ color: activityConfig?.color }}
-                            />
-                          )}
+                    <div key={row.id} className="flex items-center gap-3 py-3">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                        {Icon && (
+                          <Icon
+                            className="size-4"
+                            style={{ color: activityConfig?.color }}
+                          />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium">
                           {activityConfig?.label ?? row.activity_type}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {row.volunteer?.name ?? "—"}&nbsp;&middot;&nbsp;
+                          {format(new Date(row.occurred_at), "dd/MM HH:mm", {
+                            locale: ptBR,
+                          })}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <span className="text-lg font-bold tabular-nums leading-none">
+                          {row.count}
                         </span>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap tabular-nums">
-                        {row.count}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                        {format(new Date(row.occurred_at), "dd/MM HH:mm", {
-                          locale: ptBR,
-                        })}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
                         {row.lat && row.lng ? (
                           <a
                             href={`https://www.google.com/maps?q=${row.lat},${row.lng}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-xs text-primary hover:underline"
+                            className="flex items-center gap-0.5 text-xs text-primary"
                           >
                             <MapPin className="size-3" />
-                            Ver
+                            GPS
                           </a>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                        ) : null}
+                      </div>
+                    </div>
                   );
                 })}
-              </TableBody>
-            </Table>
-          </div>
-        </TabsContent>
+              </div>
+            </div>
 
-        <TabsContent value="pessoas" className="pt-2">
-          <div className="relative w-full overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Consentimento</TableHead>
-                  <TableHead>Registrado por</TableHead>
-                  <TableHead>Bairro</TableHead>
-                  <TableHead>Data</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {peopleRows?.length === 0 && (
+            {/* Desktop table */}
+            <div className="relative hidden w-full overflow-x-auto sm:block">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center text-muted-foreground"
-                    >
-                      Nenhuma pessoa registrada.
-                    </TableCell>
+                    <TableHead>Voluntário</TableHead>
+                    <TableHead>Atividade</TableHead>
+                    <TableHead>Qtd</TableHead>
+                    <TableHead>Data/Hora</TableHead>
+                    <TableHead>GPS</TableHead>
                   </TableRow>
-                )}
+                </TableHeader>
+                <TableBody>
+                  {!activityRows &&
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          <Skeleton className="h-4 w-24" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-28" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-8" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-24" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-10" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {activityRows?.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center text-muted-foreground"
+                      >
+                        Nenhuma atividade registrada.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {activityRows?.map((row) => {
+                    const activityConfig =
+                      ACTIVITY_TYPES[row.activity_type as ActivityType];
+                    const Icon = activityConfig
+                      ? ICONS[row.activity_type as ActivityType]
+                      : null;
+                    return (
+                      <TableRow key={row.id}>
+                        <TableCell className="whitespace-nowrap">
+                          {row.volunteer?.name ?? "—"}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          <span className="flex items-center gap-1.5">
+                            {Icon && (
+                              <Icon
+                                className="size-3.5"
+                                style={{ color: activityConfig?.color }}
+                              />
+                            )}
+                            {activityConfig?.label ?? row.activity_type}
+                          </span>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap tabular-nums">
+                          {row.count}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {format(new Date(row.occurred_at), "dd/MM HH:mm", {
+                            locale: ptBR,
+                          })}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {row.lat && row.lng ? (
+                            <a
+                              href={`https://www.google.com/maps?q=${row.lat},${row.lng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <MapPin className="size-3" />
+                              Ver
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          {/* People tab */}
+          <TabsContent value="pessoas" className="pt-2">
+            {/* Mobile card list */}
+            <div className="sm:hidden">
+              {!peopleRows && (
+                <div className="divide-y divide-border">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 py-3">
+                      <div className="flex-1 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-5 w-8 rounded-full" />
+                        </div>
+                        <Skeleton className="h-3 w-40" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {peopleRows?.length === 0 && (
+                <div className="py-10 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Nenhuma pessoa registrada.
+                  </p>
+                </div>
+              )}
+              <div className="divide-y divide-border">
                 {peopleRows?.map((row) => (
-                  <TableRow
+                  <div
                     key={row.id}
-                    className="cursor-pointer"
+                    className={`flex items-center gap-3 py-3 ${row.consent_level >= 2 ? "cursor-pointer" : ""}`}
                     onClick={() => {
                       if (row.consent_level >= 2) {
                         router.push(`/pessoa/${row.id}`);
                       }
                     }}
                   >
-                    <TableCell className="whitespace-nowrap">
-                      {row.consent_level >= 2 && row.name ? (
-                        row.name
-                      ) : (
-                        <span className="italic text-muted-foreground">
-                          Anônimo
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        {row.consent_level >= 2 && row.name ? (
+                          <p className="truncate text-sm font-medium">
+                            {row.name}
+                          </p>
+                        ) : (
+                          <p className="text-sm italic text-muted-foreground">
+                            Anônimo
+                          </p>
+                        )}
+                        <span
+                          className={`inline-flex h-5 shrink-0 items-center rounded-full px-2 text-xs font-medium ${CONSENT_BADGE[row.consent_level]}`}
+                        >
+                          N{row.consent_level}
                         </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <span
-                        className={`inline-flex h-5 items-center rounded-full px-2 text-xs font-medium ${CONSENT_BADGE[row.consent_level]}`}
-                      >
-                        N{row.consent_level}
-                      </span>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {row.registrant?.name ?? "—"}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-muted-foreground">
-                      {row.neighborhood ?? "—"}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                      {row.created_at
-                        ? format(new Date(row.created_at), "dd/MM HH:mm", {
-                            locale: ptBR,
-                          })
-                        : "—"}
-                    </TableCell>
-                  </TableRow>
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {row.registrant?.name ?? "—"}
+                        {row.neighborhood ? ` · ${row.neighborhood}` : ""}
+                        {row.created_at
+                          ? ` · ${format(new Date(row.created_at), "dd/MM", { locale: ptBR })}`
+                          : ""}
+                      </p>
+                    </div>
+                    {row.consent_level >= 2 && (
+                      <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+                    )}
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
-        </TabsContent>
-      </Tabs>
+              </div>
+            </div>
+
+            {/* Desktop table */}
+            <div className="relative hidden w-full overflow-x-auto sm:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Consentimento</TableHead>
+                    <TableHead>Registrado por</TableHead>
+                    <TableHead>Bairro</TableHead>
+                    <TableHead>Data</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!peopleRows &&
+                    Array.from({ length: 4 }).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          <Skeleton className="h-4 w-28" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-5 w-8 rounded-full" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-24" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-20" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-16" />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {peopleRows?.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center text-muted-foreground"
+                      >
+                        Nenhuma pessoa registrada.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {peopleRows?.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className={row.consent_level >= 2 ? "cursor-pointer" : ""}
+                      onClick={() => {
+                        if (row.consent_level >= 2) {
+                          router.push(`/pessoa/${row.id}`);
+                        }
+                      }}
+                    >
+                      <TableCell className="whitespace-nowrap">
+                        {row.consent_level >= 2 && row.name ? (
+                          row.name
+                        ) : (
+                          <span className="italic text-muted-foreground">
+                            Anônimo
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <span
+                          className={`inline-flex h-5 items-center rounded-full px-2 text-xs font-medium ${CONSENT_BADGE[row.consent_level]}`}
+                        >
+                          N{row.consent_level}
+                        </span>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {row.registrant?.name ?? "—"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {row.neighborhood ?? "—"}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                        {row.created_at
+                          ? format(new Date(row.created_at), "dd/MM HH:mm", {
+                              locale: ptBR,
+                            })
+                          : "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

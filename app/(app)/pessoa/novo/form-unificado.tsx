@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import { ChevronDown, ChevronUp, LocateFixed } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { uuidv7 } from "@/lib/uuid/v7";
 import { registerPerson, checkDuplicatePerson } from "./actions";
 import { compressImage } from "@/lib/image/compress";
 import { createClient } from "@/lib/supabase/client";
+import { useGeolocation } from "@/lib/geo/use-geolocation";
 
 const NEED_TYPES = [
   { value: "oração", label: "Oração" },
@@ -41,10 +42,13 @@ export function FormUnificado({
   neighborhoods,
 }: FormUnificadoProps) {
   const [isPending, startTransition] = useTransition();
+  const geo = useGeolocation();
 
   // Seção 1: Dados básicos (sempre visível)
   const [conversionDecision, setConversionDecision] = useState(false);
   const [needType, setNeedType] = useState("");
+  const [neighborhood, setNeighborhood] = useState("");
+  const [city, setCity] = useState("");
 
   // Seção 2: Identificação (expansível)
   const [showIdentification, setShowIdentification] = useState(false);
@@ -53,6 +57,7 @@ export function FormUnificado({
 
   // Seção 3: Dados completos (expansível, só se consentido)
   const [showFullData, setShowFullData] = useState(false);
+  const [address, setAddress] = useState("");
 
   const currentConsentText = showFullData ? CONSENT_TEXTS[3] : CONSENT_TEXTS[2];
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -61,6 +66,14 @@ export function FormUnificado({
   // Duplicata
   const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
   const [skipDuplicateCheck, setSkipDuplicateCheck] = useState(false);
+
+  // Pre-fill location fields from GPS + reverse geocoding
+  useEffect(() => {
+    if (geo.loading || geo.denied) return;
+    if (geo.neighborhood) setNeighborhood((prev) => prev || geo.neighborhood);
+    if (geo.city) setCity((prev) => prev || geo.city);
+    if (geo.streetAddress) setAddress((prev) => prev || geo.streetAddress);
+  }, [geo.loading, geo.denied, geo.neighborhood, geo.city, geo.streetAddress]);
 
   function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
     const digits = e.target.value.replace(/\D/g, "");
@@ -106,11 +119,8 @@ export function FormUnificado({
     const formData = new FormData(e.currentTarget);
 
     const name = (formData.get("name") as string)?.trim() ?? "";
-    const neighborhood = (formData.get("neighborhood") as string)?.trim() ?? "";
-    const city = (formData.get("city") as string)?.trim() ?? "";
     const prayerRequest =
       (formData.get("prayerRequest") as string)?.trim() ?? "";
-    const address = (formData.get("address") as string)?.trim() ?? "";
     const phoneDigits = phone.replace(/\D/g, "");
 
     // Validações condicionais
@@ -140,7 +150,7 @@ export function FormUnificado({
       }
     }
 
-    setSkipDuplicateCheck(false); // reset para próximas submissões
+    setSkipDuplicateCheck(false);
     setDuplicateWarning(null);
 
     startTransition(async () => {
@@ -224,6 +234,8 @@ export function FormUnificado({
         clientEventId,
         consentLevel,
         activityHint,
+        lat: geo.lat ?? undefined,
+        lng: geo.lng ?? undefined,
         name: name && consentChecked ? name : undefined,
         phone:
           name && consentChecked && phoneDigits.length >= 10
@@ -246,6 +258,8 @@ export function FormUnificado({
     });
   }
 
+  const geoLoading = geo.loading && !geo.denied;
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-8 p-4 pb-8">
       {/* Conversão */}
@@ -262,9 +276,17 @@ export function FormUnificado({
 
       {/* Dados anônimos */}
       <div className="flex flex-col gap-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Localização e necessidade
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Localização e necessidade
+          </h2>
+          {geoLoading && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <LocateFixed className="size-3 animate-pulse" />
+              Detectando...
+            </span>
+          )}
+        </div>
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="neighborhood" className="text-base">
@@ -274,6 +296,8 @@ export function FormUnificado({
             id="neighborhood"
             name="neighborhood"
             list="neighborhood-list"
+            value={neighborhood}
+            onChange={(e) => setNeighborhood(e.target.value)}
             className="h-12 text-base"
           />
           <datalist id="neighborhood-list">
@@ -287,7 +311,13 @@ export function FormUnificado({
           <Label htmlFor="city" className="text-base">
             Cidade
           </Label>
-          <Input id="city" name="city" className="h-12 text-base" />
+          <Input
+            id="city"
+            name="city"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className="h-12 text-base"
+          />
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -414,7 +444,7 @@ export function FormUnificado({
                 type="button"
                 onClick={() => {
                   setShowFullData((v) => {
-                    if (!v) setConsentChecked(false); // expandindo para N3, forçar releitura
+                    if (!v) setConsentChecked(false);
                     return !v;
                   });
                 }}
@@ -447,6 +477,8 @@ export function FormUnificado({
                     id="address"
                     name="address"
                     rows={2}
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
                     className="text-base"
                   />
                 </div>

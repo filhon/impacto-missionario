@@ -7,6 +7,15 @@ import { ACTIVITY_TYPES, type ActivityType } from "@/types/domain";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import type { MapPoint } from "@/components/activity-map";
+
+const ActivityMap = dynamic(() => import("@/components/activity-map"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[320px] w-full animate-pulse rounded-lg bg-muted" />
+  ),
+});
 import {
   BarChart,
   Bar,
@@ -52,6 +61,8 @@ type ActivityRow = {
   team_id: string;
   user_id: string;
   occurred_at: string;
+  lat: number | null;
+  lng: number | null;
 };
 
 type PersonRow = {
@@ -136,7 +147,9 @@ export default function CoordDashboard() {
       const supabase = createClient();
       let query = supabase
         .from("activity_events")
-        .select("id, count, activity_type, team_id, user_id, occurred_at")
+        .select(
+          "id, count, activity_type, team_id, user_id, occurred_at, lat, lng",
+        )
         .eq("event_id", event.id);
 
       if (effectiveStartDate) {
@@ -328,6 +341,18 @@ export default function CoordDashboard() {
       .map(([date, total]) => ({
         date,
         total,
+      }));
+  }, [activityRows]);
+
+  const mapPoints = useMemo<MapPoint[]>(() => {
+    if (!activityRows) return [];
+    return activityRows
+      .filter((r) => r.lat != null && r.lng != null)
+      .map((r) => ({
+        lat: r.lat as number,
+        lng: r.lng as number,
+        activity_type: r.activity_type,
+        occurred_at: r.occurred_at,
       }));
   }, [activityRows]);
 
@@ -624,6 +649,23 @@ export default function CoordDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium">
+            Atividades no mapa
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-3">
+          {mapPoints.length === 0 ? (
+            <div className="flex h-[320px] items-center justify-center rounded-lg bg-muted text-sm text-muted-foreground">
+              Nenhuma atividade com localização registrada
+            </div>
+          ) : (
+            <ActivityMap points={mapPoints} />
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

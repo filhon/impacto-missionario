@@ -1,7 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import dynamic from "next/dynamic";
+import { useState } from "react";
 import { FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,23 +10,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import {
-  aggregateForReport,
-  type AggregateReportFilters,
-} from "@/app/(coord)/export/actions";
-
-const PDFDownloadLink = dynamic(
-  () =>
-    import("@react-pdf/renderer").then((mod) => ({
-      default: mod.PDFDownloadLink,
-    })),
-  { ssr: false },
-);
-
-const RelatorioPDF = dynamic(
-  () => import("@/lib/pdf/RelatorioPDF").then((mod) => mod.RelatorioPDF),
-  { ssr: false },
-);
+import { toast } from "sonner";
 
 interface Props {
   eventId: string;
@@ -42,20 +25,41 @@ export function ExportPdfCard({
   endDate,
   selectedTeams,
 }: Props) {
-  const teamIds =
-    selectedTeams.size > 0 ? Array.from(selectedTeams) : undefined;
+  const [loading, setLoading] = useState(false);
 
-  const filters: AggregateReportFilters = { startDate, endDate, teamIds };
+  const handleDownload = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+      for (const id of selectedTeams) {
+        params.append("teamId", id);
+      }
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["coord", eventId, "pdf-report", startDate, endDate, teamIds],
-    queryFn: () => aggregateForReport(filters),
-    enabled: !!eventId,
-  });
+      const res = await fetch(`/api/export/pdf?${params}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        toast.error(body.error ?? "Erro ao gerar PDF");
+        return;
+      }
 
-  const isError = data && "error" in data;
-  const reportData = data && !("error" in data) ? data : null;
-  const isReady = !isLoading && reportData;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `relatorio-impacto-${eventId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar PDF");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Card>
@@ -69,29 +73,10 @@ export function ExportPdfCard({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {isError && (
-          <p className="mb-2 text-sm text-destructive">
-            {(data as { error: string }).error}
-          </p>
-        )}
-        {isReady ? (
-          <PDFDownloadLink
-            document={<RelatorioPDF {...reportData} />}
-            fileName={`relatorio-impacto-${eventId}.pdf`}
-          >
-            {({ loading }: { loading: boolean }) => (
-              <Button disabled={loading} variant="outline">
-                <FileText className="size-4" />
-                {loading ? "Gerando PDF…" : "Baixar PDF"}
-              </Button>
-            )}
-          </PDFDownloadLink>
-        ) : (
-          <Button disabled variant="outline">
-            <FileText className="size-4" />
-            {isLoading ? "Carregando…" : "Baixar PDF"}
-          </Button>
-        )}
+        <Button onClick={handleDownload} disabled={loading} variant="outline">
+          <FileText className="size-4" />
+          {loading ? "Gerando PDF…" : "Baixar PDF"}
+        </Button>
       </CardContent>
     </Card>
   );

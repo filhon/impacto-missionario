@@ -1094,6 +1094,7 @@ Critério de aceite:
 - Mato wi-fi com o app aberto, navego entre rotas cacheadas, registro atividade
 - Volto online, sync acontece
 - Recarregar offline mostra a home corretamente
+
 ```
 
 ---

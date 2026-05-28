@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Users, User } from "lucide-react";
+import { Home, Users, User, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSession } from "@/lib/context/session";
 
-const navItems = [
+const baseNavItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/pessoa/novo", label: "Pessoas", icon: Users },
   { href: "/perfil", label: "Perfil", icon: User },
@@ -13,6 +14,12 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { user } = useSession();
+
+  const navItems =
+    user.role === "lider" || user.role === "coord"
+      ? [...baseNavItems, { href: "/equipe", label: "Equipe", icon: BarChart2 }]
+      : baseNavItems;
 
   return (
     <nav
