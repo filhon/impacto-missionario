@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- White background with rounded corners for PWA icon -->
+  <rect width="512" height="512" rx="80" ry="80" fill="#ffffff"/>
+
+  <!--
+    OPEN BOOK — navy blue
+    The book resembles an open book/flower:
+    - Two broad pages curve up and outward
+    - Pages meet at a deep V-notch at centre bottom of the book shape
+    - A narrow stem/spike descends from the V
+    Approximate extents: x 56–456, top ~y 230, bottom of stem ~y 472
+  -->
+
+  <!-- Left page wing -->
+  <path d="
+    M 256 406
+    C 248 374, 232 352, 208 336
+    L  80 254
+    C  62 244,  46 250,  46 270
+    L  46 374
+    C  46 396,  62 414,  84 417
+    L 247 431
+    C 252 432, 256 428, 256 422
+    Z
+  " fill="#1e2b8f"/>
+
+  <!-- Right page wing -->
+  <path d="
+    M 256 406
+    C 264 374, 280 352, 304 336
+    L 432 254
+    C 450 244, 466 250, 466 270
+    L 466 374
+    C 466 396, 450 414, 428 417
+    L 265 431
+    C 260 432, 256 428, 256 422
+    Z
+  " fill="#1e2b8f"/>
+
+
+  <!--
+    FOUR CIRCLES above the book:
+    Image layout (in reading order):
+      navy circle  (left, lower)   ~148, 183
+      green circle (top centre)    ~256, 110
+      cyan circle  (right, lower)  ~368, 183
+      orange circle (centre mid)   ~256, 228
+  -->
+
+  <!-- Navy blue (left) -->
+  <circle cx="148" cy="183" r="43" fill="#1e2b8f"/>
+
+  <!-- Lime green (top centre) -->
+  <circle cx="256" cy="110" r="43" fill="#79bd1e"/>
+
+  <!-- Sky cyan (right) -->
+  <circle cx="368" cy="183" r="43" fill="#00b5d9"/>
+
+  <!-- Orange-red (centre, just above book) -->
+  <circle cx="256" cy="229" r="41" fill="#e84514"/>
+</svg>
