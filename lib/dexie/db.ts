@@ -1,4 +1,5 @@
 import Dexie, { type Table } from "dexie";
+import type { SessionData } from "@/lib/context/session-types";
 
 export type SyncStatus = "pending" | "synced" | "failed";
 
@@ -49,10 +50,16 @@ export interface LocalSession {
   jwt?: string;
 }
 
+export interface LocalSessionCache {
+  id: "current";
+  data: SessionData;
+}
+
 class ImpactoDB extends Dexie {
   activity_events!: Table<LocalActivityEvent, string>;
   people!: Table<LocalPerson, string>;
   session!: Table<LocalSession, string>;
+  sessionCache!: Table<LocalSessionCache, string>;
 
   constructor() {
     super("impacto-missionario");
@@ -61,6 +68,13 @@ class ImpactoDB extends Dexie {
       people:
         "client_event_id, status, next_retry_at, consent_level, created_at",
       session: "id",
+    });
+    this.version(2).stores({
+      activity_events: "client_event_id, status, next_retry_at, created_at",
+      people:
+        "client_event_id, status, next_retry_at, consent_level, created_at",
+      session: "id",
+      sessionCache: "id",
     });
   }
 }
