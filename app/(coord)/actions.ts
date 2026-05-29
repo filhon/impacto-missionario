@@ -24,6 +24,41 @@ async function getCoordData(
   return userData;
 }
 
+const TEAM_COLORS = [
+  "#0ea5e9", // sky
+  "#10b981", // emerald
+  "#f59e0b", // amber
+  "#ef4444", // red
+  "#8b5cf6", // violet
+  "#ec4899", // pink
+  "#14b8a6", // teal
+  "#f97316", // orange
+  "#6366f1", // indigo
+  "#84cc16", // lime
+];
+
+async function pickTeamColor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  eventId: string
+): Promise<string> {
+  const { data: existing } = await supabase
+    .from("teams")
+    .select("color")
+    .eq("event_id", eventId);
+
+  const usedColors = new Set((existing ?? []).map((t) => t.color));
+  const unused = TEAM_COLORS.find((c) => !usedColors.has(c));
+  if (unused) return unused;
+
+  // All colors used — cycle by picking the least-used one
+  const counts = TEAM_COLORS.map((c) => ({
+    color: c,
+    count: (existing ?? []).filter((t) => t.color === c).length,
+  }));
+  counts.sort((a, b) => a.count - b.count);
+  return counts[0].color;
+}
+
 export async function createTeam(formData: FormData) {
   const supabase = await createClient();
   const coordData = await getCoordData(supabase);
@@ -40,11 +75,13 @@ export async function createTeam(formData: FormData) {
     return { error: "Código deve ter exatamente 4 dígitos numéricos" };
   }
 
+  const color = await pickTeamColor(supabase, coordData.event_id);
+
   const { error } = await supabase.from("teams").insert({
     event_id: coordData.event_id,
     name: name.trim(),
     code_4dig: code,
-    color: "#0ea5e9",
+    color,
   });
 
   if (error) {
