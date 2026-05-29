@@ -39,7 +39,7 @@ const TEAM_COLORS = [
 
 async function pickTeamColor(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  eventId: string
+  eventId: string,
 ): Promise<string> {
   const { data: existing } = await supabase
     .from("teams")
@@ -56,7 +56,7 @@ async function pickTeamColor(
     count: (existing ?? []).filter((t) => t.color === c).length,
   }));
   counts.sort((a, b) => a.count - b.count);
-  return counts[0].color;
+  return counts[0]!.color;
 }
 
 export async function createTeam(formData: FormData) {

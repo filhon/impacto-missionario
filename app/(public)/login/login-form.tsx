@@ -34,7 +34,7 @@ export function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-background px-6 py-12">
+    <main className="flex min-h-svh flex-col items-center justify-center bg-background px-6 py-12">
       <div className="w-full max-w-90">
         {/* Brand anchor */}
         <div className="mb-10 text-center">
@@ -460,6 +460,7 @@ export function LoginForm() {
               onChange={setCode}
               autoFocus
               containerClassName="w-full"
+              aria-label="Código da equipe"
             >
               <InputOTPGroup className="w-full gap-2">
                 <InputOTPSlot
@@ -532,6 +533,6 @@ export function LoginForm() {
           </Button>
         </form>
       </div>
-    </div>
+    </main>
   );
 }
