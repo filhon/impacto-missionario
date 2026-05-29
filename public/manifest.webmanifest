@@ -4,8 +4,8 @@
   "description": "Registro de atividades de avanço missionário",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#1e2b8f",
+  "background_color": "#f6f7e6",
+  "theme_color": "#f6f7e6",
   "orientation": "portrait",
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" },

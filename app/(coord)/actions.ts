@@ -1,6 +1,5 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 
 // ---------------------------------------------------------------------------
@@ -55,7 +54,6 @@ export async function createTeam(formData: FormData) {
     return { error: "Erro ao criar equipe" };
   }
 
-  revalidatePath("/equipes");
   return { success: true };
 }
 
@@ -107,7 +105,6 @@ export async function updateTeamName(teamId: string, name: string) {
 
   if (error) return { error: "Erro ao atualizar nome" };
 
-  revalidatePath("/equipes");
   return { success: true };
 }
 
@@ -160,7 +157,6 @@ export async function setTeamLeader(teamId: string, leaderId: string) {
 
   if (promoteErr) return { error: "Erro ao promover usuário" };
 
-  revalidatePath("/equipes");
   return { success: true };
 }
 
@@ -196,7 +192,6 @@ export async function resetTeamCode(teamId: string) {
 
       if (error) return { error: "Erro ao resetar código" };
 
-      revalidatePath("/equipes");
       return { success: true, code };
     }
   }
@@ -226,10 +221,73 @@ export async function removeTeamMember(userId: string) {
 
   if (error) return { error: "Erro ao remover membro" };
 
-  revalidatePath("/equipes");
   return { success: true };
 }
 
 export async function promoteToLeader(teamId: string, userId: string) {
   return setTeamLeader(teamId, userId);
+}
+
+// ---------------------------------------------------------------------------
+// Read actions — use the server client so auth cookies are always fresh,
+// avoiding the browser-client session-sync issue that causes newly created
+// teams to be invisible to the coord who just created them.
+// ---------------------------------------------------------------------------
+
+export async function fetchTeams() {
+  const supabase = await createClient();
+  const coordData = await getCoordData(supabase);
+  if (!coordData) return { error: "Não autorizado", data: null };
+
+  const { data, error } = await supabase
+    .from("teams")
+    .select("id, name, code_4dig, color, leader_id")
+    .eq("event_id", coordData.event_id)
+    .order("name");
+
+  if (error) return { error: "Erro ao buscar equipes", data: null };
+  return { data, error: null };
+}
+
+export async function fetchUsers() {
+  const supabase = await createClient();
+  const coordData = await getCoordData(supabase);
+  if (!coordData) return { error: "Não autorizado", data: null };
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("id, name, role, team_id")
+    .eq("event_id", coordData.event_id)
+    .order("name");
+
+  if (error) return { error: "Erro ao buscar usuários", data: null };
+  return { data, error: null };
+}
+
+export async function fetchActivityTotals() {
+  const supabase = await createClient();
+  const coordData = await getCoordData(supabase);
+  if (!coordData) return { error: "Não autorizado", data: null };
+
+  const { data, error } = await supabase
+    .from("activity_events")
+    .select("team_id, count")
+    .eq("event_id", coordData.event_id);
+
+  if (error) return { error: "Erro ao buscar totais", data: null };
+  return { data, error: null };
+}
+
+export async function fetchPeopleTotals() {
+  const supabase = await createClient();
+  const coordData = await getCoordData(supabase);
+  if (!coordData) return { error: "Não autorizado", data: null };
+
+  const { data, error } = await supabase
+    .from("people_reached")
+    .select("team_id")
+    .eq("event_id", coordData.event_id);
+
+  if (error) return { error: "Erro ao buscar totais", data: null };
+  return { data, error: null };
 }

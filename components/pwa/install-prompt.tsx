@@ -4,8 +4,17 @@ import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Share, Plus } from "lucide-react";
 
-const DISMISSED_FLAG = "pwa-install-dismissed";
+const DISMISSED_KEY = "pwa-install-dismissed-until";
+const INSTALLED_KEY = "pwa-installed";
+const DISMISS_DAYS = 30;
 const SHOW_DELAY_MS = 30_000;
+
+function isRunningAsPwa() {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    !!(window.navigator as unknown as { standalone?: boolean }).standalone
+  );
+}
 
 function isIOS() {
   return (
@@ -18,17 +27,36 @@ function isAndroid() {
   return "BeforeInstallPromptEvent" in window;
 }
 
+function isDismissed() {
+  const until = localStorage.getItem(DISMISSED_KEY);
+  if (!until) return false;
+  return Date.now() < Number(until);
+}
+
+function markDismissed() {
+  const until = Date.now() + DISMISS_DAYS * 24 * 60 * 60 * 1000;
+  localStorage.setItem(DISMISSED_KEY, String(until));
+}
+
+function markInstalled() {
+  localStorage.setItem(INSTALLED_KEY, "1");
+}
+
+function isInstalled() {
+  return localStorage.getItem(INSTALLED_KEY) === "1";
+}
+
 export function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<Event | null>(null);
   const [mode, setMode] = useState<"android" | "ios" | null>(null);
 
   const hide = useCallback(() => {
     setMode(null);
-    sessionStorage.setItem(DISMISSED_FLAG, "1");
+    markDismissed();
   }, []);
 
   useEffect(() => {
-    if (sessionStorage.getItem(DISMISSED_FLAG)) return;
+    if (isRunningAsPwa() || isInstalled() || isDismissed()) return;
 
     const handler = (e: Event) => {
       e.preventDefault();
@@ -36,8 +64,14 @@ export function InstallPrompt() {
     };
     window.addEventListener("beforeinstallprompt", handler);
 
+    const onInstalled = () => {
+      markInstalled();
+      setMode(null);
+    };
+    window.addEventListener("appinstalled", onInstalled);
+
     const timer = setTimeout(() => {
-      if (sessionStorage.getItem(DISMISSED_FLAG)) return;
+      if (isRunningAsPwa() || isInstalled() || isDismissed()) return;
       if (isAndroid()) {
         setMode("android");
       } else if (isIOS()) {
@@ -47,6 +81,7 @@ export function InstallPrompt() {
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("appinstalled", onInstalled);
       clearTimeout(timer);
     };
   }, []);
@@ -57,8 +92,13 @@ export function InstallPrompt() {
     const result = await (
       deferredPrompt as unknown as { userChoice: Promise<{ outcome: string }> }
     ).userChoice;
-    if (result.outcome === "accepted") setDeferredPrompt(null);
-    hide();
+    if (result.outcome === "accepted") {
+      markInstalled();
+      setDeferredPrompt(null);
+    } else {
+      markDismissed();
+    }
+    setMode(null);
   };
 
   if (!mode) return null;

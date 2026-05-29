@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     "Aplicativo offline-first para registro de atividades missionárias",
   manifest: "/manifest.webmanifest",
   other: {
-    "theme-color": "#0a0a0a",
+    "mobile-web-app-capable": "yes",
   },
 };
 
@@ -43,7 +43,16 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.webmanifest" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-        <meta name="theme-color" content="#0a0a0a" />
+        <meta
+          name="theme-color"
+          content="#f6f7e6"
+          media="(prefers-color-scheme: light)"
+        />
+        <meta
+          name="theme-color"
+          content="#1a1a0e"
+          media="(prefers-color-scheme: dark)"
+        />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Impacto" />

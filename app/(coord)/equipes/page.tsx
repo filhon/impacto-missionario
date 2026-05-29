@@ -2,7 +2,6 @@
 
 import { useSession } from "@/lib/context/session";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -42,6 +41,10 @@ import {
   resetTeamCode,
   removeTeamMember,
   promoteToLeader,
+  fetchTeams,
+  fetchUsers,
+  fetchActivityTotals,
+  fetchPeopleTotals,
 } from "@/app/(coord)/actions";
 
 type TeamWithMembers = {
@@ -80,14 +83,8 @@ export default function CoordEquipesPage() {
   const { data: teams } = useQuery({
     queryKey: ["coord", event?.id, "teams-manage"],
     queryFn: async () => {
-      if (!event?.id) return [];
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("teams")
-        .select("id, name, code_4dig, color, leader_id")
-        .eq("event_id", event.id)
-        .order("name");
-      return (data ?? []) as TeamWithMembers[];
+      const result = await fetchTeams();
+      return (result.data ?? []) as TeamWithMembers[];
     },
     enabled: !!event?.id,
   });
@@ -95,55 +92,36 @@ export default function CoordEquipesPage() {
   const { data: users } = useQuery({
     queryKey: ["coord", event?.id, "users-manage"],
     queryFn: async () => {
-      if (!event?.id) return [];
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("users")
-        .select("id, name, role, team_id")
-        .eq("event_id", event.id)
-        .order("name");
-      return (data ?? []) as UserInfo[];
+      const result = await fetchUsers();
+      return (result.data ?? []) as UserInfo[];
     },
     enabled: !!event?.id,
   });
 
-  const { data: memberCounts } = useQuery({
-    queryKey: ["coord", event?.id, "member-counts"],
-    queryFn: async () => {
-      if (!event?.id) return new Map<string, number>();
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("users")
-        .select("team_id")
-        .eq("event_id", event.id);
-
-      if (!data) return new Map();
-      const map = new Map<string, number>();
-      for (const row of data) {
-        if (row.team_id) {
-          map.set(row.team_id, (map.get(row.team_id) ?? 0) + 1);
-        }
+  const memberCounts = new Map<string, number>(
+    (users ?? []).reduce<[string, number][]>((acc, u) => {
+      if (u.team_id) {
+        const existing = acc.find(([k]) => k === u.team_id);
+        if (existing) existing[1]++;
+        else acc.push([u.team_id, 1]);
       }
-      return map;
-    },
-    enabled: !!event?.id,
-  });
+      return acc;
+    }, []),
+  );
 
   const { data: activityTotals } = useQuery({
     queryKey: ["coord", event?.id, "activity-totals-per-team"],
     queryFn: async () => {
-      if (!event?.id) return new Map<string, number>();
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("activity_events")
-        .select("team_id, count")
-        .eq("event_id", event.id);
-
-      if (!data) return new Map();
+      const result = await fetchActivityTotals();
+      const data = result.data ?? [];
       const map = new Map<string, number>();
       for (const row of data) {
         if (row.team_id) {
-          map.set(row.team_id, (map.get(row.team_id) ?? 0) + row.count);
+          map.set(
+            row.team_id,
+            (map.get(row.team_id) ?? 0) +
+              (row as { team_id: string; count: number }).count,
+          );
         }
       }
       return map;
@@ -154,14 +132,8 @@ export default function CoordEquipesPage() {
   const { data: peopleTotals } = useQuery({
     queryKey: ["coord", event?.id, "people-totals-per-team"],
     queryFn: async () => {
-      if (!event?.id) return new Map<string, number>();
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("people_reached")
-        .select("team_id")
-        .eq("event_id", event.id);
-
-      if (!data) return new Map();
+      const result = await fetchPeopleTotals();
+      const data = result.data ?? [];
       const map = new Map<string, number>();
       for (const row of data) {
         if (row.team_id) {
